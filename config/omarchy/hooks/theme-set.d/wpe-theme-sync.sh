@@ -1,0 +1,1 @@
+/home/azterisk/.config/omarchy/plugins/azterisk.wallpaper-engine/hooks/theme-set.sh
