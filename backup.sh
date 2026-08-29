@@ -15,6 +15,7 @@ TARGET_DIRS=(
   "kitty"
   "foot"
   "btop"
+  "systemd/user"
 )
 
 # Target single files under ~/.config
@@ -46,6 +47,16 @@ for file in "${TARGET_FILES[@]}"; do
     cp -f "$HOME/.config/$file" "$CONFIG_DIR/$file"
   fi
 done
+
+# Sync local user binaries / scripts
+BIN_DIR="$DOTFILES_DIR/bin"
+mkdir -p "$BIN_DIR"
+if [ -d "$HOME/.local/bin" ]; then
+  echo " -> Syncing ~/.local/bin"
+  rsync -a --delete \
+    --exclude='.git/' \
+    "$HOME/.local/bin/" "$BIN_DIR/"
+fi
 
 echo "==> Backup sync completed successfully."
 

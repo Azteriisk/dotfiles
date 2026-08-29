@@ -8,6 +8,8 @@ Private configuration backup and synchronization for Omarchy, Hyprland, and desk
 |-----------|------|-------------|
 | **Omarchy** | `~/.config/omarchy/` | Shell config (`shell.json`), cloned user plugins (`azterisk.idle`, `azterisk.indicators`, etc.), hooks, branding |
 | **Hyprland** | `~/.config/hypr/` | Window rules, monitor configs, keybindings, look and feel |
+| **Systemd User** | `~/.config/systemd/user/` | User services and drop-in overrides (`omarchy-crash-watch`, `voxtype`) |
+| **Scripts** | `~/.local/bin/` | Custom CLI tools, agent wrappers, and utility scripts |
 | **Terminals** | `~/.config/{ghostty,alacritty,kitty,foot}/` | Terminal styling and configurations |
 | **Btop** | `~/.config/btop/` | System resource monitor config |
 | **Starship** | `~/.config/starship.toml` | Cross-shell prompt configuration |

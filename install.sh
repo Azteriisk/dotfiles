@@ -15,6 +15,7 @@ TARGET_DIRS=(
   "kitty"
   "foot"
   "btop"
+  "systemd/user"
 )
 
 TARGET_FILES=(
@@ -54,7 +55,17 @@ for file in "${TARGET_FILES[@]}"; do
   fi
 done
 
+# Deploy local user binaries / scripts
+if [ -d "$DOTFILES_DIR/bin" ]; then
+  echo " -> Restoring ~/.local/bin"
+  mkdir -p "$HOME/.local/bin"
+  rsync -a "$DOTFILES_DIR/bin/" "$HOME/.local/bin/"
+fi
+
 echo "==> Refreshing active session..."
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl --user daemon-reload 2>/dev/null || true
+fi
 if command -v omarchy-shell >/dev/null 2>&1; then
   omarchy-shell shell reloadConfig 2>/dev/null || true
   omarchy-shell shell rescanPlugins 2>/dev/null || true
