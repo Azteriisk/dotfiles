@@ -2,8 +2,8 @@
   "version": 1,
   "idle": {
     "screensaver": 150,
-    "lock": 300,
-    "stayAwakeMode": "screensaver-only"
+    "lock": 600,
+    "stayAwakeMode": "full"
   },
   "bar": {
     "position": "top",
