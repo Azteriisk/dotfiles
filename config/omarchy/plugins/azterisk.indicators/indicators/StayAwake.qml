@@ -40,14 +40,14 @@ BarIndicator {
     bar: root.bar
     owner: root
     open: root.popupOpen
-    contentWidth: settingsPopup.fittedContentWidth(Style.space(320))
+    padding: Style.space(16)
+    contentWidth: settingsPopup.fittedContentWidth(Style.space(350))
     contentHeight: settingsPopup.fittedContentHeight(contentColumn.implicitHeight)
-    padding: Style.spacing.cardPadding
 
     Column {
       id: contentColumn
       width: parent.width
-      spacing: Style.space(12)
+      spacing: Style.space(14)
 
       // Header Row
       Row {
@@ -69,13 +69,14 @@ BarIndicator {
           font.pixelSize: Style.font.subtitle
           font.bold: true
           anchors.verticalCenter: parent.verticalCenter
-          width: parent.width - Style.space(90)
+          width: parent.width - Style.space(96)
+          elide: Text.ElideRight
         }
 
         BorderSurface {
           anchors.verticalCenter: parent.verticalCenter
-          height: Style.space(22)
-          width: Style.space(62)
+          height: Style.space(24)
+          width: Style.space(64)
           radius: Style.cornerRadius
           color: root.active ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.2) : Qt.rgba(Color.foreground.r, Color.foreground.g, Color.foreground.b, 0.1)
           borderSpec: Border.controlSpec("normal", Color.foreground, Color.accent)
@@ -111,25 +112,28 @@ BarIndicator {
           text: "STAY AWAKE BEHAVIOR"
         }
 
-        ButtonGroup {
+        Row {
           width: parent.width
-          value: root.idleService ? root.idleService.stayAwakeMode : "screensaver-only"
-          options: [
-            {
-              value: "screensaver-only",
-              label: "Screensaver",
-              icon: "󱄄",
-              tooltip: "Show screensaver on idle, but never lock PC"
-            },
-            {
-              value: "full",
-              label: "Inhibit All",
-              icon: "󰅶",
-              tooltip: "Keep screen completely awake (no screensaver, no lock)"
-            }
-          ]
-          onChanged: function(val) {
-            if (root.idleService) root.idleService.setStayAwakeMode(val)
+          spacing: Style.space(8)
+
+          Button {
+            width: Math.floor((parent.width - Style.space(8)) / 2)
+            text: "Screensaver"
+            iconText: "󱄄"
+            tooltipText: "Show screensaver on idle, but never lock PC"
+            bordered: true
+            selected: root.idleService ? root.idleService.stayAwakeMode === "screensaver-only" : true
+            onClicked: if (root.idleService) root.idleService.setStayAwakeMode("screensaver-only")
+          }
+
+          Button {
+            width: Math.floor((parent.width - Style.space(8)) / 2)
+            text: "Inhibit All"
+            iconText: "󰅶"
+            tooltipText: "Keep screen completely awake (no screensaver, no lock)"
+            bordered: true
+            selected: root.idleService ? root.idleService.stayAwakeMode === "full" : false
+            onClicked: if (root.idleService) root.idleService.setStayAwakeMode("full")
           }
         }
       }
@@ -143,18 +147,34 @@ BarIndicator {
           text: "SCREENSAVER TIMEOUT"
         }
 
-        ButtonGroup {
+        Row {
           width: parent.width
-          value: root.idleService && root.idleService.screensaverEnabled ? String(root.idleService.screensaverTimeoutSeconds) : "0"
-          options: [
-            { value: "60", label: "1m", tooltip: "Screensaver after 1 min" },
-            { value: "150", label: "2.5m", tooltip: "Screensaver after 2.5 min" },
-            { value: "300", label: "5m", tooltip: "Screensaver after 5 min" },
-            { value: "600", label: "10m", tooltip: "Screensaver after 10 min" },
-            { value: "0", label: "Off", tooltip: "Disable screensaver" }
-          ]
-          onChanged: function(val) {
-            if (root.idleService) root.idleService.setScreensaverTimeout(Number(val))
+          spacing: Style.space(6)
+
+          readonly property int btnWidth: Math.floor((parent.width - Style.space(24)) / 5)
+
+          Repeater {
+            model: [
+              { value: 60, label: "1m", tooltip: "Screensaver after 1 minute" },
+              { value: 150, label: "2.5m", tooltip: "Screensaver after 2.5 minutes" },
+              { value: 300, label: "5m", tooltip: "Screensaver after 5 minutes" },
+              { value: 600, label: "10m", tooltip: "Screensaver after 10 minutes" },
+              { value: 0, label: "Off", tooltip: "Disable screensaver" }
+            ]
+
+            delegate: Button {
+              required property var modelData
+              width: parent.btnWidth
+              text: modelData.label
+              tooltipText: modelData.tooltip
+              bordered: true
+              selected: {
+                if (!root.idleService) return false
+                if (modelData.value === 0) return !root.idleService.screensaverEnabled
+                return root.idleService.screensaverEnabled && root.idleService.screensaverTimeoutSeconds === modelData.value
+              }
+              onClicked: if (root.idleService) root.idleService.setScreensaverTimeout(modelData.value)
+            }
           }
         }
       }
@@ -168,18 +188,34 @@ BarIndicator {
           text: "NORMAL LOCK TIMEOUT"
         }
 
-        ButtonGroup {
+        Row {
           width: parent.width
-          value: root.idleService && root.idleService.lockTimeoutSeconds > 0 ? String(root.idleService.lockTimeoutSeconds) : "0"
-          options: [
-            { value: "120", label: "2m", tooltip: "Lock after 2 min idle" },
-            { value: "300", label: "5m", tooltip: "Lock after 5 min idle" },
-            { value: "600", label: "10m", tooltip: "Lock after 10 min idle" },
-            { value: "900", label: "15m", tooltip: "Lock after 15 min idle" },
-            { value: "0", label: "Never", tooltip: "Disable idle locking" }
-          ]
-          onChanged: function(val) {
-            if (root.idleService) root.idleService.setLockTimeout(Number(val))
+          spacing: Style.space(6)
+
+          readonly property int btnWidth: Math.floor((parent.width - Style.space(24)) / 5)
+
+          Repeater {
+            model: [
+              { value: 120, label: "2m", tooltip: "Lock after 2 minutes idle" },
+              { value: 300, label: "5m", tooltip: "Lock after 5 minutes idle" },
+              { value: 600, label: "10m", tooltip: "Lock after 10 minutes idle" },
+              { value: 900, label: "15m", tooltip: "Lock after 15 minutes idle" },
+              { value: 0, label: "Never", tooltip: "Disable idle locking" }
+            ]
+
+            delegate: Button {
+              required property var modelData
+              width: parent.btnWidth
+              text: modelData.label
+              tooltipText: modelData.tooltip
+              bordered: true
+              selected: {
+                if (!root.idleService) return false
+                if (modelData.value === 0) return !root.idleService.lockEnabled
+                return root.idleService.lockEnabled && root.idleService.lockTimeoutSeconds === modelData.value
+              }
+              onClicked: if (root.idleService) root.idleService.setLockTimeout(modelData.value)
+            }
           }
         }
       }
@@ -192,7 +228,7 @@ BarIndicator {
         spacing: Style.space(8)
 
         Button {
-          width: (parent.width - Style.space(8)) / 2
+          width: Math.floor((parent.width - Style.space(8)) / 2)
           text: "Screensaver"
           iconText: "󱄄"
           tooltipText: "Launch screensaver now"
@@ -204,7 +240,7 @@ BarIndicator {
         }
 
         Button {
-          width: (parent.width - Style.space(8)) / 2
+          width: Math.floor((parent.width - Style.space(8)) / 2)
           text: "Lock Screen"
           iconText: "󰌾"
           tooltipText: "Lock PC immediately"
