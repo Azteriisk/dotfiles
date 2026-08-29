@@ -40,16 +40,19 @@ BarIndicator {
     bar: root.bar
     owner: root
     open: root.popupOpen
-    margin: Style.space(10)
-    padding: Style.space(20)
-    contentWidth: settingsPopup.fittedContentWidth(Style.space(370))
+    margin: Style.space(12)
+    padding: Style.space(24)
+    contentWidth: settingsPopup.fittedContentWidth(Style.space(380))
     contentHeight: settingsPopup.fittedContentHeight(contentWrapper.implicitHeight)
 
     Item {
       id: contentWrapper
       anchors.fill: parent
-      anchors.margins: Style.space(4)
-      implicitHeight: contentColumn.implicitHeight
+      anchors.topMargin: Style.space(8)
+      anchors.bottomMargin: Style.space(8)
+      anchors.leftMargin: Style.space(8)
+      anchors.rightMargin: Style.space(8)
+      implicitHeight: contentColumn.implicitHeight + Style.space(16)
 
       Column {
         id: contentColumn
@@ -78,7 +81,7 @@ BarIndicator {
             font.pixelSize: Style.font.subtitle
             font.bold: true
             anchors.verticalCenter: parent.verticalCenter
-            width: parent.width - Style.space(106)
+            width: parent.width - Style.space(110)
             elide: Text.ElideRight
           }
 
@@ -119,14 +122,15 @@ BarIndicator {
 
           PanelSectionHeader {
             text: "STAY AWAKE BEHAVIOR"
+            topPadding: Style.space(4)
           }
 
           Row {
             width: parent.width
-            spacing: Style.space(8)
+            spacing: Style.space(10)
 
             Button {
-              width: Math.floor((parent.width - Style.space(8)) / 2)
+              width: Math.floor((parent.width - Style.space(10)) / 2)
               text: "Screensaver"
               iconText: "󱄄"
               tooltipText: "Show screensaver on idle, but never lock PC"
@@ -136,7 +140,7 @@ BarIndicator {
             }
 
             Button {
-              width: Math.floor((parent.width - Style.space(8)) / 2)
+              width: Math.floor((parent.width - Style.space(10)) / 2)
               text: "Inhibit All"
               iconText: "󰅶"
               tooltipText: "Keep screen completely awake (no screensaver, no lock)"
@@ -154,6 +158,7 @@ BarIndicator {
 
           PanelSectionHeader {
             text: "SCREENSAVER TIMEOUT"
+            topPadding: Style.space(4)
           }
 
           Row {
@@ -195,6 +200,7 @@ BarIndicator {
 
           PanelSectionHeader {
             text: "NORMAL LOCK TIMEOUT"
+            topPadding: Style.space(4)
           }
 
           Row {
@@ -234,10 +240,10 @@ BarIndicator {
         // Quick Actions
         Row {
           width: parent.width
-          spacing: Style.space(8)
+          spacing: Style.space(10)
 
           Button {
-            width: Math.floor((parent.width - Style.space(8)) / 2)
+            width: Math.floor((parent.width - Style.space(10)) / 2)
             text: "Screensaver"
             iconText: "󱄄"
             tooltipText: "Launch screensaver now"
@@ -249,7 +255,7 @@ BarIndicator {
           }
 
           Button {
-            width: Math.floor((parent.width - Style.space(8)) / 2)
+            width: Math.floor((parent.width - Style.space(10)) / 2)
             text: "Lock Screen"
             iconText: "󰌾"
             tooltipText: "Lock PC immediately"
