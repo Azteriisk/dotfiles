@@ -26,17 +26,21 @@ Item {
   readonly property string stayAwakeMode: idleConfig.stayAwakeMode !== undefined ? String(idleConfig.stayAwakeMode) : "screensaver-only"
   readonly property bool stayAwakeAllowsScreensaver: stayAwakeMode !== "full" && stayAwakeMode !== "inhibit-all"
 
-  // Idle detection is enabled during stay-awake IF screensaver is allowed
-  readonly property bool idleEnabled: stayAwakeStateLoaded && (!stayAwake || stayAwakeAllowsScreensaver)
-
   // Lock is enabled ONLY when stay-awake is inactive and lockTimeout is greater than 0
   readonly property bool lockEnabled: !stayAwake && lockTimeoutSeconds > 0
+  readonly property bool screensaverEnabled: screensaverTimeoutSeconds > 0
 
-  readonly property int firstIdleTimeoutSeconds: lockEnabled
-    ? Math.min(screensaverTimeoutSeconds, lockTimeoutSeconds)
-    : screensaverTimeoutSeconds
+  // Idle detection is enabled if either screensaver or lock is active in current state
+  readonly property bool idleEnabled: stayAwakeStateLoaded && ((!stayAwake && (screensaverEnabled || lockEnabled)) || (stayAwake && stayAwakeAllowsScreensaver && screensaverEnabled))
 
-  readonly property int screensaverDelaySeconds: Math.max(0, screensaverTimeoutSeconds - firstIdleTimeoutSeconds)
+  readonly property int firstIdleTimeoutSeconds: {
+    if (screensaverEnabled && lockEnabled) return Math.min(screensaverTimeoutSeconds, lockTimeoutSeconds)
+    if (screensaverEnabled) return screensaverTimeoutSeconds
+    if (lockEnabled) return lockTimeoutSeconds
+    return 3600
+  }
+
+  readonly property int screensaverDelaySeconds: screensaverEnabled ? Math.max(0, screensaverTimeoutSeconds - firstIdleTimeoutSeconds) : 0
   readonly property int lockDelaySeconds: lockEnabled ? Math.max(0, lockTimeoutSeconds - firstIdleTimeoutSeconds) : 0
   readonly property string screensaverClass: "org.omarchy.screensaver"
 
@@ -52,6 +56,7 @@ Item {
   property int screensaverWindowCount: 0
 
   function secondsFromConfig(value, fallback) {
+    if (value === 0 || value === "0") return 0
     return IdleModel.secondsFromConfig(value, fallback)
   }
 
@@ -66,6 +71,32 @@ Item {
     console.log("omarchy idle " + root.lastEventAt + " " + root.lastEvent)
   }
 
+  function updateIdleConfig(changes) {
+    if (root.shell && typeof root.shell.mutateShellConfig === "function") {
+      root.shell.mutateShellConfig(function(config) {
+        if (!config.idle || typeof config.idle !== "object") config.idle = {}
+        for (var k in changes) {
+          config.idle[k] = changes[k]
+        }
+      })
+    }
+  }
+
+  function setStayAwakeMode(mode) {
+    logEvent("config-change", "stayAwakeMode=" + mode)
+    updateIdleConfig({ stayAwakeMode: mode })
+  }
+
+  function setScreensaverTimeout(seconds) {
+    logEvent("config-change", "screensaver=" + seconds)
+    updateIdleConfig({ screensaver: seconds })
+  }
+
+  function setLockTimeout(seconds) {
+    logEvent("config-change", "lock=" + seconds)
+    updateIdleConfig({ lock: seconds })
+  }
+
   function runProcess(process, label, command) {
     if (process.running) {
       logEvent("process-skip", label + " already running")
@@ -78,6 +109,7 @@ Item {
   }
 
   function launchScreensaver() {
+    if (!root.screensaverEnabled) return
     root.screensaverStartedThisCycle = true
     screensaverLaunchGraceTimer.restart()
     runProcess(screensaverProcess, "screensaver", "[[ $(omarchy-shell lock isLocked 2>/dev/null) == \"true\" ]] || omarchy-launch-screensaver")
@@ -104,13 +136,15 @@ Item {
       return
     }
 
-    logEvent("idle-cycle-start", "screensaver=" + root.screensaverTimeoutSeconds + " lock=" + (root.lockEnabled ? root.lockTimeoutSeconds : "disabled"))
+    logEvent("idle-cycle-start", "screensaver=" + (root.screensaverEnabled ? root.screensaverTimeoutSeconds : "disabled") + " lock=" + (root.lockEnabled ? root.lockTimeoutSeconds : "disabled"))
     root.idledThisCycle = true
     root.screensaverStartedThisCycle = false
     resetScreensaverWindows()
 
-    if (root.screensaverDelaySeconds === 0) launchScreensaver()
-    else screensaverTimer.restart()
+    if (root.screensaverEnabled) {
+      if (root.screensaverDelaySeconds === 0) launchScreensaver()
+      else screensaverTimer.restart()
+    }
 
     if (root.lockEnabled) {
       if (root.lockDelaySeconds === 0) lockSystem("lock-timeout-immediate")
@@ -178,10 +212,6 @@ Item {
   function handleActiveSignal() {
     if (!root.idledThisCycle) return
 
-    // Starting the screensaver can make the compositor report activity. Keep
-    // the lock timer running once the screensaver exists (or during its short
-    // launch grace); Hyprland window events cancel the cycle if it exits before
-    // the normal lock deadline.
     if (root.screensaverStartedThisCycle && (root.screensaverWindowCount > 0 || screensaverLaunchGraceTimer.running)) {
       logEvent("idle-monitor-active", "screensaver cycle remains armed")
       return
@@ -207,6 +237,7 @@ Item {
       stayAwakeStateLoaded: root.stayAwakeStateLoaded,
       stayAwakeStatePath: root.stayAwakeStatePath,
       lockEnabled: root.lockEnabled,
+      screensaverEnabled: root.screensaverEnabled,
       idle: idleMonitor.isIdle,
       inIdleCycle: root.idledThisCycle,
       screensaverStarted: root.screensaverStartedThisCycle,
@@ -386,6 +417,21 @@ Item {
 
     function toggle(): string {
       return root.setIdleEnabled(!root.idleEnabled)
+    }
+
+    function setStayAwakeMode(mode: string): string {
+      root.setStayAwakeMode(mode)
+      return "ok"
+    }
+
+    function setScreensaver(seconds: string): string {
+      root.setScreensaverTimeout(Number(seconds) || 0)
+      return "ok"
+    }
+
+    function setLock(seconds: string): string {
+      root.setLockTimeout(Number(seconds) || 0)
+      return "ok"
     }
   }
 }
