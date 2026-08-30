@@ -12,18 +12,9 @@
 -- To disable all preinstalled app/webapp bindings, set:
 --   omarchy_preinstalled_bindings = false
 
--- Add a new binding.
--- o.bind("SUPER + SHIFT + R", "SSH", "alacritty -e ssh your-server")
-
--- Change an existing binding by unbinding it first, then binding the key again.
--- This example changes SUPER+SPACE from the launcher to the Omarchy root menu.
--- hl.unbind("SUPER + SPACE")
--- o.bind("SUPER + SPACE", "Omarchy menu", "omarchy-menu toggle root")
-
--- Disable a default binding without replacing it.
--- hl.unbind("SUPER + SHIFT + B")
-
--- Logitech MX Keys examples:
--- o.bind("SUPER + SHIFT + S", nil, "omarchy-capture-screenshot")
--- o.bind("SUPER + H", nil, "voxtype record toggle")
--- o.bind("SUPER + PERIOD", nil, "omarchy-shell shell toggle omarchy.emojis")
+-- Window Minimize Plugin (azterisk.minimize)
+local minimize_cmd = (os.getenv("HOME") or "/home/azterisk") .. "/.local/bin/omarchy-minimize"
+o.bind("SUPER + M", "Minimize window", minimize_cmd .. " minimize")
+o.bind("SUPER + ALT + M", "Restore all minimized windows", minimize_cmd .. " restore-all")
+o.bind("SUPER + CTRL + M", "Restore last minimized window", minimize_cmd .. " restore-last")
+o.bind("SUPER + mouse:274", "Minimize or restore on desktop click", minimize_cmd .. " mouse-action", { mouse = true })

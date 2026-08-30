@@ -13,6 +13,11 @@ Thumbs.db
 *.swp
 *.swo
 
+# Compiled binaries and objects
+*.o
+*.so
+*.a
+
 # Ignore nested git repositories in plugins if any
 **/.git/
 

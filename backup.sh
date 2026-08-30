@@ -37,6 +37,8 @@ for dir in "${TARGET_DIRS[@]}"; do
       --exclude='*.lock' \
       --exclude='*.tmp' \
       --exclude='*.bak*' \
+      --exclude='*.o' \
+      --exclude='*.so' \
       "$HOME/.config/$dir/" "$CONFIG_DIR/$dir/"
   fi
 done
