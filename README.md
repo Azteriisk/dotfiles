@@ -26,6 +26,7 @@ A suite of modular extensions designed specifically for Omarchy and Hyprland. Ea
 | [**`omarchy-idle-manager`**](https://github.com/Azteriisk/omarchy-idle-manager) | `azterisk.idle` | Screensaver & lock idle management, independent timers, Stay Awake modes (*Screensaver-Only* vs *Inhibit-All*), and top-bar popover | **`omarchy plugin add`** (Native) |
 | [**`omarchy-window-minimize`**](https://github.com/Azteriisk/omarchy-window-minimize) | `azterisk.minimize` | Hyprland C++ CSD interceptor hook, window hiding/restoring, top-bar drawer badge, and shortcut bindings | **One-Line Installer** (Automated build & bindings) |
 | [**`omarchy-wallpaper-engine`**](https://github.com/Azteriisk/omarchy-wallpaper-engine) | `azterisk.wallpaper-engine` | Steam Wallpaper Engine integration for Scene, Video, and HTML5 Web wallpapers, theme sync hook, and audio reactivity | **One-Line Installer** (CLI links & theme hooks) |
+| [**`omarchy-games`**](https://github.com/Azteriisk/omarchy-games) | `azterisk.games` | Unified game library manager & launcher for Steam, Lutris, and RetroArch with dynamic game artwork and search bar indexing | **`omarchy plugin add`** (Native) |
 
 ### Recommended Installation Commands
 
@@ -43,14 +44,21 @@ omarchy plugin add https://github.com/Azteriisk/omarchy-display-manager.git --en
 omarchy plugin add https://github.com/Azteriisk/omarchy-idle-manager.git --enable --yes
 ```
 
-#### 3. Window Minimize (`omarchy-window-minimize`)
+#### 3. Games Library & Launcher (`omarchy-games`)
+> **Best Method: Native Omarchy CLI**  
+> Unified multi-source gaming library aggregator for Steam, Lutris, RetroArch, and custom sources with dynamic artwork and search bar indexing:
+```bash
+omarchy plugin add https://github.com/Azteriisk/omarchy-games.git --enable --yes
+```
+
+#### 4. Window Minimize (`omarchy-window-minimize`)
 > **Best Method: One-Line Git Installer**  
 > Hybrid plugin requiring a compiled C++ Hyprland hook (`minimize-hook.so`), CLI helper in `~/.local/bin/omarchy-minimize`, autostart entries in `autostart.lua`, and keybindings in `bindings.lua`. The installer handles all steps automatically:
 ```bash
 git clone https://github.com/Azteriisk/omarchy-window-minimize.git && cd omarchy-window-minimize && ./install.sh
 ```
 
-#### 4. Wallpaper Engine (`omarchy-wallpaper-engine`)
+#### 5. Wallpaper Engine (`omarchy-wallpaper-engine`)
 > **Best Method: One-Line Git Installer**  
 > Integrates with `linux-wallpaperengine`, links the `omarchy-wpe` helper into `~/.local/bin`, and registers the live theme change hook in `~/.config/omarchy/hooks/theme-set.d/wpe-theme-sync.sh`:
 ```bash
