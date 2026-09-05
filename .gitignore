@@ -5,6 +5,7 @@
 *.lock
 *.tmp
 *.bak*
+*.cache
 
 # OS and editor files
 .DS_Store
@@ -12,6 +13,8 @@ Thumbs.db
 *~
 *.swp
 *.swo
+.idea/
+.vscode/
 
 # Compiled binaries and objects
 *.o
@@ -25,3 +28,14 @@ Thumbs.db
 *cookie*
 *secret*
 *token*
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+.env
+.env.*
+*auth.json
+*credentials*
+
+# Dotfiles safety backups
+dotfiles-backup*

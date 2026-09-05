@@ -1,0 +1,23 @@
+{
+  "audio_sensitivity": 10,
+  "bloom": 0,
+  "window_seconds": 1,
+  "sum_gain": 0.23,
+  "eq_high": -52.33,
+  "opacity": 80,
+  "sum_thickness": 1,
+  "sum_y_offset": -28.84,
+  "wave_smoothing": 8.2,
+  "tilt_angle": 16.1,
+  "star_count": 0,
+  "master_gain": 1.2,
+  "fog_density": 0.03,
+  "band_count": 25,
+  "theme": "pulsar_white",
+  "eq_mid": -67,
+  "gradient_direction": "diagonal",
+  "line_spacing": 25,
+  "eq_low": -85,
+  "min_freq": 478,
+  "sum_mode": "mirrored"
+}

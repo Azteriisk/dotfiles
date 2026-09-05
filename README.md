@@ -1,87 +1,196 @@
-# Azteriisk Dotfiles
+# Azteriisk Dotfiles & Preset Management System
 
-Private configuration backup and synchronization for Omarchy, Hyprland, and desktop utilities.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Arch Linux](https://img.shields.io/badge/Arch_Linux-1793D1?logo=arch-linux&logoColor=white)](https://archlinux.org)
+[![Hyprland](https://img.shields.io/badge/Hyprland-Wayland-00aaee)](https://hyprland.org)
+[![Omarchy](https://img.shields.io/badge/Omarchy-Desktop-black)](https://github.com/Azteriisk)
 
-## Tracked Configurations
+A modular dotfiles management framework and personal desktop configuration for **Omarchy** and **Hyprland**. 
 
-| Component | Path | Description |
-|-----------|------|-------------|
-| **Omarchy** | `~/.config/omarchy/` | Shell config (`shell.json`), cloned user plugins (`azterisk.idle`, `azterisk.indicators`, etc.), hooks, branding |
-| **Hyprland** | `~/.config/hypr/` | Window rules, monitor configs, keybindings, look and feel |
-| **Systemd User** | `~/.config/systemd/user/` | User services and drop-in overrides (`omarchy-crash-watch`, `voxtype`) |
-| **Scripts** | `~/.local/bin/` | Custom CLI tools, agent wrappers, and utility scripts |
-| **Terminals** | `~/.config/{ghostty,alacritty,kitty,foot}/` | Terminal styling and configurations |
-| **Btop** | `~/.config/btop/` | System resource monitor config |
-| **Starship** | `~/.config/starship.toml` | Cross-shell prompt configuration |
+This repository serves two purposes:
+1. **The Default Setup**: A complete, polished, daily-driver desktop environment built around Hyprland, custom Omarchy plugins, Wayland utilities, terminal configurations, and developer workflows.
+2. **The Preset Engine (`dots`)**: A lightweight, multi-preset management system that allows you to snapshot your configs and plugins, clone your setup onto new machines with a single command, and swap between completely different desktop profiles instantly.
 
 ---
 
-## Custom Omarchy Plugins
+## 🚀 Quickstart: Deploy on Any Machine
 
-A suite of modular extensions designed specifically for Omarchy and Hyprland. Each project lives in `~/Projects` and is publicly hosted on GitHub.
+To clone and install this setup on a fresh machine:
 
-| Plugin | ID | Description | Best Install Method |
+```bash
+git clone https://github.com/Azteriisk/dotfiles.git ~/.dotfiles
+cd ~/.dotfiles
+./install.sh
+```
+
+The installer will:
+- Safely create a timestamped backup of existing configurations in `~/.config/dotfiles-backups/`.
+- Let you choose between presets (e.g. `default` for the full desktop or `minimal` for terminal-only).
+- Symlink configs and helper binaries cleanly into place.
+- Prompt to automatically clone and build the included custom Omarchy plugins.
+
+---
+
+## ⚡ The `dots` CLI: Instant Preset Swapping
+
+The repository includes a standalone, zero-dependency CLI tool called `dots` that handles preset switching, live syncing, and system health audits.
+
+```text
+     ___       __       _____ __         
+ ___/ /____  / /_  ___/ / _//_/ ___ ___ 
+/ _  / _ \ \/ / /_/ _  / _// / / -_|_-< 
+\_,_/\___/\__/\__/\_,_/_/ /_/  \__/___/ 
+  Multi-Preset System & Sync Framework
+```
+
+### 1. Swapping Presets Instantly
+Switch between completely different desktop configurations with a single command:
+
+```bash
+# Switch to the full Omarchy + Hyprland desktop
+./dots preset switch default
+
+# Switch instantly to a lightweight terminal & CLI environment
+./dots preset switch minimal
+```
+*When switching, `dots` swaps configuration symlinks and automatically triggers reload hooks (`hyprctl reload`, `omarchy-shell reloadConfig`, `systemctl --user daemon-reload`).*
+
+### 2. Saving Your Active Setup as a New Preset
+Tweak your desktop, install new tools, and snapshot the result into a reusable preset:
+
+```bash
+# Save your current configuration state as 'work-station'
+./dots preset save work-station "Workstation Setup" "Dual-monitor layout with productivity tools"
+
+# Fork an existing preset to iterate safely
+./dots preset clone default gaming-setup
+```
+
+### 3. Backing Up & Git Syncing
+Sync your active configurations from `~/.config/` into the active preset with automatic secret scanning:
+
+```bash
+# Backup and commit with custom message
+./dots backup -m "feat: adjust ghostty padding and hyprland master layout"
+
+# Backup, commit, and push directly to GitHub
+./dots backup --push -m "feat: sync updated starship prompt"
+```
+
+### 4. Inspecting Status & Running Security Audits
+```bash
+# View active preset, git status, and drift
+./dots status
+
+# Run security scan, broken symlink check, and portability audit
+./dots doctor
+```
+
+---
+
+## 🎛 Included Presets
+
+| Preset | Description | Targets |
+| :--- | :--- | :--- |
+| **`default`** *(Active)* | **Azteriisk Personal Desktop**: Full Omarchy shell, custom plugins, Hyprland window rules, terminal styling, user systemd units, and developer tool wrappers. | `omarchy`, `hypr`, `ghostty`, `alacritty`, `kitty`, `foot`, `btop`, `systemd/user`, `starship.toml`, `~/.local/bin/` |
+| **`minimal`** | **Lightweight Terminal Environment**: Clean configuration stripped down to terminal emulators, system monitor, and prompt. Ideal for servers, VMs, or distraction-free coding. | `ghostty`, `btop`, `starship.toml` |
+
+---
+
+## 🖥 The Default Setup: Tracked Configurations
+
+The `default` preset tracks and orchestrates the following components:
+
+| Component | Target Path | Description |
+| :--- | :--- | :--- |
+| **Omarchy** | `~/.config/omarchy/` | Shell layout (`shell.json`), custom plugins, hooks (`theme-set.d`, `post-boot.d`), branding, backgrounds |
+| **Hyprland** | `~/.config/hypr/` | Window rules, monitor setups (`monitors.lua`), keybindings (`bindings.lua`), look and feel |
+| **Systemd User** | `~/.config/systemd/user/` | Background user services and overrides (`omarchy-crash-watch`, `voxtype`) |
+| **Scripts & CLI** | `~/.local/bin/` | Custom binaries, desktop helpers (`omarchy-minimize`, `omarchy-wpe`), and agent wrappers |
+| **Terminals** | `~/.config/{ghostty,alacritty,kitty,foot}/` | Comprehensive styling, font rendering, and terminal bindings |
+| **Btop** | `~/.config/btop/` | System resource monitor with theme synchronization |
+| **Starship** | `~/.config/starship.toml` | High-performance cross-shell prompt configuration |
+
+---
+
+## 🧩 Custom Omarchy Plugins
+
+A suite of modular extensions designed specifically for Omarchy and Hyprland. Each plugin is maintained as a dedicated open-source repository and can be installed natively or via the `dots plugins install` command:
+
+| Plugin | ID | Description | Installation Method |
 | :--- | :--- | :--- | :--- |
-| [**`omarchy-display-manager`**](https://github.com/Azteriisk/omarchy-display-manager) | `azterisk.display-manager` | Interactive visual drag-and-drop monitor layout, per-monitor rotation, center offsets, and workspace renumbering | **`omarchy plugin add`** (Native) |
-| [**`omarchy-idle-manager`**](https://github.com/Azteriisk/omarchy-idle-manager) | `azterisk.idle` | Screensaver & lock idle management, independent timers, Stay Awake modes (*Screensaver-Only* vs *Inhibit-All*), and top-bar popover | **`omarchy plugin add`** (Native) |
-| [**`omarchy-window-minimize`**](https://github.com/Azteriisk/omarchy-window-minimize) | `azterisk.minimize` | Hyprland C++ CSD interceptor hook, window hiding/restoring, top-bar drawer badge, and shortcut bindings | **One-Line Installer** (Automated build & bindings) |
-| [**`omarchy-wallpaper-engine`**](https://github.com/Azteriisk/omarchy-wallpaper-engine) | `azterisk.wallpaper-engine` | Steam Wallpaper Engine integration for Scene, Video, and HTML5 Web wallpapers, theme sync hook, and audio reactivity | **One-Line Installer** (CLI links & theme hooks) |
-| [**`omarchy-games`**](https://github.com/Azteriisk/omarchy-games) | `azterisk.games` | Unified game library manager & launcher for Steam, Lutris, and RetroArch with dynamic game artwork and search bar indexing | **`omarchy plugin add`** (Native) |
+| [**`omarchy-display-manager`**](https://github.com/Azteriisk/omarchy-display-manager) | `azterisk.display-manager` | Interactive visual drag-and-drop monitor layout, per-monitor rotation, center offsets, and workspace renumbering. | **`omarchy plugin add`** (Native) |
+| [**`omarchy-idle-manager`**](https://github.com/Azteriisk/omarchy-idle-manager) | `azterisk.idle` | Screensaver & lock idle management, independent timers, Stay Awake modes (*Screensaver-Only* vs *Inhibit-All*), and top-bar popover. | **`omarchy plugin add`** (Native) |
+| [**`omarchy-games`**](https://github.com/Azteriisk/omarchy-games) | `azterisk.games` | Unified game library manager & launcher for Steam, Lutris, and RetroArch with dynamic game artwork and search bar indexing. | **`omarchy plugin add`** (Native) |
+| [**`omarchy-window-minimize`**](https://github.com/Azteriisk/omarchy-window-minimize) | `azterisk.minimize` | Hyprland C++ CSD interceptor hook, window hiding/restoring, top-bar drawer badge, and shortcut bindings. | **One-Line Installer** (Automated build & bindings) |
+| [**`omarchy-wallpaper-engine`**](https://github.com/Azteriisk/omarchy-wallpaper-engine) | `azterisk.wallpaper-engine` | Steam Wallpaper Engine integration for Scene, Video, and HTML5 Web wallpapers, theme sync hook, and audio reactivity. | **One-Line Installer** (CLI links & theme hooks) |
 
-### Recommended Installation Commands
+### Installing All Plugins Automatically
+To install all plugins associated with the active preset:
+```bash
+./dots plugins install default
+```
+
+### Manual Plugin Installation Commands
 
 #### 1. Display Manager (`omarchy-display-manager`)
-> **Best Method: Native Omarchy CLI**  
-> Pure QML & JavaScript with zero compilation or system hooks. Native installation handles cloning, validation, and bar placement immediately:
 ```bash
 omarchy plugin add https://github.com/Azteriisk/omarchy-display-manager.git --enable --yes
 ```
 
 #### 2. Idle & Screensaver Manager (`omarchy-idle-manager`)
-> **Best Method: Native Omarchy CLI**  
-> Unified headless idle detection service and top-bar Stay Awake widget. Native installation activates the service and adds the navbar popover:
 ```bash
 omarchy plugin add https://github.com/Azteriisk/omarchy-idle-manager.git --enable --yes
 ```
 
 #### 3. Games Library & Launcher (`omarchy-games`)
-> **Best Method: Native Omarchy CLI**  
-> Unified multi-source gaming library aggregator for Steam, Lutris, RetroArch, and custom sources with dynamic artwork and search bar indexing:
 ```bash
 omarchy plugin add https://github.com/Azteriisk/omarchy-games.git --enable --yes
 ```
 
 #### 4. Window Minimize (`omarchy-window-minimize`)
-> **Best Method: One-Line Git Installer**  
-> Hybrid plugin requiring a compiled C++ Hyprland hook (`minimize-hook.so`), CLI helper in `~/.local/bin/omarchy-minimize`, autostart entries in `autostart.lua`, and keybindings in `bindings.lua`. The installer handles all steps automatically:
 ```bash
-git clone https://github.com/Azteriisk/omarchy-window-minimize.git && cd omarchy-window-minimize && ./install.sh
+git clone https://github.com/Azteriisk/omarchy-window-minimize.git /tmp/omarchy-window-minimize \
+  && cd /tmp/omarchy-window-minimize && ./install.sh && rm -rf /tmp/omarchy-window-minimize
 ```
 
 #### 5. Wallpaper Engine (`omarchy-wallpaper-engine`)
-> **Best Method: One-Line Git Installer**  
-> Integrates with `linux-wallpaperengine`, links the `omarchy-wpe` helper into `~/.local/bin`, and registers the live theme change hook in `~/.config/omarchy/hooks/theme-set.d/wpe-theme-sync.sh`:
 ```bash
-git clone https://github.com/Azteriisk/omarchy-wallpaper-engine.git && cd omarchy-wallpaper-engine && ./install.sh
+git clone https://github.com/Azteriisk/omarchy-wallpaper-engine.git /tmp/omarchy-wallpaper-engine \
+  && cd /tmp/omarchy-wallpaper-engine && ./install.sh && rm -rf /tmp/omarchy-wallpaper-engine
 ```
 *(Prerequisite: `yay -S linux-wallpaperengine-git`)*
 
 ---
 
-## Quick Usage
+## 🛠 Command Reference
 
-### Backup & Sync Changes
-To pull your active configs from `~/.config/`, commit, and push to GitHub in one command:
-```bash
-~/dotfiles/backup.sh "feat: update keybindings and idle service"
-```
-Or without arguments (uses an automated timestamp):
-```bash
-~/dotfiles/backup.sh
-```
+| Command | Description |
+| :--- | :--- |
+| **`./dots preset list`** | List all presets, descriptions, and mark the active preset. |
+| **`./dots preset switch <name>`** | Instantly apply a preset, link configs, and reload desktop hooks. |
+| **`./dots preset save <name>`** | Snapshot active system configs into a new or existing preset. |
+| **`./dots preset clone <src> <dst>`** | Clone an existing preset to iterate on a new variation. |
+| **`./dots preset info <name>`** | Display detailed preset metadata, tracked files, and hooks. |
+| **`./dots preset delete <name>`** | Safely delete a non-active preset. |
+| **`./dots install [--preset <name>]`** | Bootstrap on a new machine with automatic safety backups. |
+| **`./dots backup [preset] [-m msg]`** | Sync system changes, scan for accidental secrets, and commit. |
+| **`./dots status`** | Display active preset, tracked files count, and git status. |
+| **`./dots doctor`** | Audit system health, verify symlink resolution, and scan for secret leaks. |
+| **`./dots plugins list [preset]`** | View registered plugins for a preset. |
+| **`./dots plugins install [preset]`** | Install all plugins registered in the preset. |
 
-### Restore / Deploy to a Machine
-To restore or apply these dotfiles to `~/.config/` (automatically backs up existing configs first):
-```bash
-~/dotfiles/install.sh
-```
+---
+
+## 🔒 Security & Privacy
+
+This repository is configured for public hosting:
+- Built-in pre-commit secret scanner in `./dots backup` and `./dots doctor` guards against accidental API token, private key (`id_rsa`, `.pem`), or `.env` leaks.
+- All symlinks use portable relative paths rather than machine-locked user paths (`/home/...`).
+- Sensitive caches, cookies, logs, and process IDs are strictly ignored via `.gitignore`.
+
+---
+
+## 📄 License
+
+Distributed under the [MIT License](LICENSE). Free to fork, adapt, and use for your own dotfile setups.

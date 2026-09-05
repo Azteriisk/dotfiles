@@ -1,0 +1,386 @@
+#!/usr/bin/env bash
+# dots - Multi-Preset Dotfiles Management System & Public Sync Framework
+set -euo pipefail
+
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB_DIR="$DOTFILES_DIR/scripts/lib"
+
+# Load modular libraries
+source "$LIB_DIR/ui.sh"
+source "$LIB_DIR/presets.sh"
+source "$LIB_DIR/plugins.sh"
+source "$LIB_DIR/doctor.sh"
+
+show_help() {
+  ui_banner
+  echo -e "${BOLD}USAGE:${RESET}"
+  echo "  dots [command] [options]"
+  echo ""
+  echo -e "${BOLD}PRESET COMMANDS:${RESET}"
+  echo "  preset list                  List all available presets (highlighting active)"
+  echo "  preset switch <name>         Instantly apply and switch to a preset"
+  echo "  preset save <name>           Save active machine configs into a new/existing preset"
+  echo "  preset clone <src> <dst>     Fork an existing preset to iterate safely"
+  echo "  preset info <name>           Display metadata and tracked configs for a preset"
+  echo "  preset delete <name>         Remove a local preset"
+  echo ""
+  echo -e "${BOLD}DEPLOYMENT & SYNC:${RESET}"
+  echo "  install [--preset <name>]    Bootstrap on a machine (interactive or flag-driven)"
+  echo "  backup [preset] [-m msg]     Sync live configs into preset, check secrets, & commit"
+  echo "  status                       View active preset, tracked files, and git drift"
+  echo ""
+  echo -e "${BOLD}PLUGINS & MAINTENANCE:${RESET}"
+  echo "  plugins list [preset]        View registered plugins for a preset"
+  echo "  plugins install [preset]     Clone/build/enable preset plugins"
+  echo "  doctor                       Audit for broken symlinks, secret leaks, and portability"
+  echo ""
+  echo -e "${BOLD}OPTIONS:${RESET}"
+  echo "  -h, --help                   Show this help menu"
+  echo "  -v, --version                Show version"
+  echo ""
+  echo -e "${BOLD}EXAMPLES:${RESET}"
+  echo "  dots preset switch default   # Switch to full Omarchy desktop"
+  echo "  dots preset switch minimal   # Switch instantly to minimal CLI setup"
+  echo "  dots preset save my-work     # Save current desktop state as 'my-work'"
+  echo "  dots backup -m 'update bar'  # Sync and commit changes"
+  echo ""
+}
+
+cmd_install() {
+  local target_preset=""
+  local mode="symlink"
+  local dry_run="false"
+  local auto_yes="false"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --preset|-p)
+        target_preset="$2"
+        shift 2
+        ;;
+      --mode|-m)
+        mode="$2"
+        shift 2
+        ;;
+      --copy)
+        mode="copy"
+        shift
+        ;;
+      --symlink)
+        mode="symlink"
+        shift
+        ;;
+      --dry-run)
+        dry_run="true"
+        shift
+        ;;
+      -y|--yes)
+        auto_yes="true"
+        shift
+        ;;
+      *)
+        target_preset="$1"
+        shift
+        ;;
+    esac
+  done
+
+  ui_banner
+  ui_header "Dotfiles Installation & Bootstrap"
+
+  # If no preset specified, prompt interactively if tty
+  if [ -z "$target_preset" ]; then
+    if [ -t 0 ] && [ "$auto_yes" = "false" ]; then
+      list_presets
+      echo ""
+      read -r -p "$(echo -e "  ${YELLOW}?${RESET} ${BOLD}Select preset to install [default]${RESET}: ")" target_preset
+      target_preset="${target_preset:-default}"
+    else
+      target_preset="default"
+    fi
+  fi
+
+  if ! preset_exists "$target_preset"; then
+    ui_fatal "Preset '$target_preset' does not exist."
+  fi
+
+  # Confirm installation
+  if [ "$auto_yes" = "false" ] && [ -t 0 ]; then
+    ui_info "Preset to deploy: $target_preset"
+    ui_info "Deployment mode:  $mode"
+    if ! ui_confirm "Proceed with installation?" "Y"; then
+      ui_info "Installation aborted."
+      exit 0
+    fi
+  fi
+
+  # Automatic safety backup of existing configurations
+  if [ "$dry_run" = "false" ]; then
+    create_safety_backup "pre-install" >/dev/null
+  fi
+
+  # Deploy preset
+  deploy_preset "$target_preset" "$mode" "$dry_run"
+
+  # Optional plugin installation (skipped in dry-run)
+  if [ "$dry_run" = "false" ] && [ -f "$PRESETS_DIR/$target_preset/plugins.json" ]; then
+    if [ "$auto_yes" = "true" ] || ui_confirm "Install plugins defined in '$target_preset'?" "Y"; then
+      install_plugins "$target_preset"
+    fi
+  fi
+
+  ui_header "Installation Summary"
+  if [ "$dry_run" = "true" ]; then
+    ui_info "Dry-run simulation completed. No files were modified."
+  else
+    ui_success "Setup complete! Preset '$target_preset' is active."
+  fi
+}
+
+cmd_backup() {
+  local target_preset=""
+  local commit_msg=""
+  local do_push="false"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -m|--message)
+        commit_msg="$2"
+        shift 2
+        ;;
+      --push|-p)
+        do_push="true"
+        shift
+        ;;
+      --preset)
+        target_preset="$2"
+        shift 2
+        ;;
+      *)
+        if [ -z "$target_preset" ]; then
+          target_preset="$1"
+        elif [ -z "$commit_msg" ]; then
+          commit_msg="$1"
+        fi
+        shift
+        ;;
+    esac
+  done
+
+  target_preset="${target_preset:-$(get_active_preset)}"
+
+  ui_header "Backing up active system configurations into preset '$target_preset'..."
+
+  local pdir="$PRESETS_DIR/$target_preset"
+  if ! preset_exists "$target_preset"; then
+    ui_warn "Preset '$target_preset' does not exist yet. Initializing new preset..."
+    save_preset "$target_preset"
+    return 0
+  fi
+
+  # Read tracked dirs and files from preset.json
+  local manifest="$pdir/preset.json"
+  local dirs
+  dirs="$(python3 -c "import json; [print(x) for x in json.load(open('$manifest')).get('tracked', {}).get('config_dirs', [])]" 2>/dev/null || true)"
+  local files
+  files="$(python3 -c "import json; [print(x) for x in json.load(open('$manifest')).get('tracked', {}).get('config_files', [])]" 2>/dev/null || true)"
+
+  for dir in $dirs; do
+    if [ -d "$HOME/.config/$dir" ]; then
+      ui_step "Syncing ~/.config/$dir"
+      mkdir -p "$pdir/config/$dir"
+      rsync -a --delete \
+        --exclude='.git/' \
+        --exclude='*.log' \
+        --exclude='*.pid' \
+        --exclude='*.sock' \
+        --exclude='*.lock' \
+        --exclude='*.tmp' \
+        --exclude='*.bak*' \
+        --exclude='*.o' \
+        --exclude='*.so' \
+        "$HOME/.config/$dir/" "$pdir/config/$dir/"
+    fi
+  done
+
+  for file in $files; do
+    if [ -f "$HOME/.config/$file" ]; then
+      ui_step "Syncing ~/.config/$file"
+      mkdir -p "$(dirname "$pdir/config/$file")"
+      cp -f "$HOME/.config/$file" "$pdir/config/$file"
+    fi
+  done
+
+  # Sync user binaries
+  local track_bin
+  track_bin="$(python3 -c "import json; print(json.load(open('$manifest')).get('tracked', {}).get('bin', False))" 2>/dev/null || echo "False")"
+  if [ "$track_bin" = "True" ] && [ -d "$HOME/.local/bin" ]; then
+    ui_step "Syncing ~/.local/bin"
+    mkdir -p "$pdir/bin"
+    rsync -a --delete \
+      --exclude='.git/' \
+      "$HOME/.local/bin/" "$pdir/bin/"
+  fi
+
+  # If default preset, keep root config and bin in sync for backwards compatibility
+  if [ "$target_preset" = "default" ]; then
+    ui_info "Synchronizing root config/ and bin/ mirrors for backwards compatibility..."
+    mkdir -p "$DOTFILES_DIR/config" "$DOTFILES_DIR/bin"
+    rsync -a --delete "$pdir/config/" "$DOTFILES_DIR/config/"
+    rsync -a --delete "$pdir/bin/" "$DOTFILES_DIR/bin/"
+  fi
+
+  ui_success "Backup sync completed successfully."
+
+  # Git check and commit
+  if [ -d "$DOTFILES_DIR/.git" ]; then
+    cd "$DOTFILES_DIR"
+
+    # Pre-flight secret audit check
+    ui_section "Running pre-flight secret scan before git staging..."
+    local token_hits
+    token_hits="$(git grep -i -E "(ghp_[a-zA-Z0-9]{20,}|github_pat_[a-zA-Z0-9_]{20,}|AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{20,})" -- ':(exclude)scripts/lib/doctor.sh' 2>/dev/null || true)"
+    if [ -n "$token_hits" ]; then
+      ui_error "ABORTING COMMIT: Live API token patterns detected:"
+      echo "$token_hits"
+      exit 1
+    fi
+
+    if [ -n "$(git status --porcelain)" ]; then
+      ui_section "Changes detected in repository:"
+      git status --short
+      echo ""
+
+      local msg="${commit_msg:-"chore(dots): backup and sync preset '$target_preset' $(date '+%Y-%m-%d %H:%M:%S')"}"
+      git add .
+      git commit -m "$msg"
+      ui_success "Committed changes: $msg"
+
+      if [ "$do_push" = "true" ]; then
+        ui_step "Pushing changes to remote repository..."
+        git push origin "$(git branch --show-current)"
+        ui_success "Pushed to remote repository."
+      else
+        ui_info "Tip: Run 'dots backup --push' or 'git push' to push changes to remote."
+      fi
+    else
+      ui_info "No configuration changes detected since last commit."
+    fi
+  fi
+}
+
+cmd_status() {
+  local active
+  active="$(get_active_preset)"
+
+  ui_banner
+  ui_header "System & Preset Status"
+  echo "  Active Preset:      ${BOLD}${GREEN}$active${RESET}"
+  echo "  Dotfiles Directory: $DOTFILES_DIR"
+
+  local pcount
+  pcount="$(find "$PRESETS_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)"
+  echo "  Installed Presets:  $pcount"
+
+  echo ""
+  ui_section "Git Repository Status:"
+  if [ -d "$DOTFILES_DIR/.git" ]; then
+    cd "$DOTFILES_DIR"
+    local branch
+    branch="$(git branch --show-current)"
+    echo "  Branch: $branch"
+    if [ -z "$(git status --porcelain)" ]; then
+      ui_success "Working tree is clean. In sync with git."
+    else
+      ui_warn "Uncommitted changes present in dotfiles repository:"
+      git status --short
+    fi
+  else
+    ui_info "Not a git repository."
+  fi
+}
+
+# Main command router
+main() {
+  local cmd="${1:-help}"
+  [ $# -gt 0 ] && shift
+
+  case "$cmd" in
+    preset|presets)
+      local subcmd="${1:-list}"
+      [ $# -gt 0 ] && shift
+      case "$subcmd" in
+        list|ls)
+          list_presets
+          ;;
+        switch|apply|use)
+          [ $# -gt 0 ] || ui_fatal "Usage: dots preset switch <preset-name>"
+          switch_preset "$1" "${2:-symlink}"
+          ;;
+        save)
+          [ $# -gt 0 ] || ui_fatal "Usage: dots preset save <preset-name> [title] [desc]"
+          save_preset "$1" "${2:-}" "${3:-}"
+          ;;
+        clone|fork)
+          [ $# -ge 2 ] || ui_fatal "Usage: dots preset clone <source> <target>"
+          clone_preset "$1" "$2"
+          ;;
+        info|show)
+          [ $# -gt 0 ] || ui_fatal "Usage: dots preset info <preset-name>"
+          preset_info "$1"
+          ;;
+        delete|rm)
+          [ $# -gt 0 ] || ui_fatal "Usage: dots preset delete <preset-name>"
+          delete_preset "$1"
+          ;;
+        *)
+          ui_fatal "Unknown preset subcommand: $subcmd"
+          ;;
+      esac
+      ;;
+    switch|apply)
+      [ $# -gt 0 ] || ui_fatal "Usage: dots switch <preset-name>"
+      switch_preset "$1" "${2:-symlink}"
+      ;;
+    install)
+      cmd_install "$@"
+      ;;
+    backup|sync)
+      cmd_backup "$@"
+      ;;
+    status)
+      cmd_status
+      ;;
+    plugins|plugin)
+      local subcmd="${1:-list}"
+      [ $# -gt 0 ] && shift
+      case "$subcmd" in
+        list|ls)
+          list_plugins "$@"
+          ;;
+        install|add)
+          install_plugins "$@"
+          ;;
+        *)
+          ui_fatal "Unknown plugins subcommand: $subcmd"
+          ;;
+      esac
+      ;;
+    doctor|check|audit|sanitize)
+      run_doctor
+      ;;
+    help|--help|-h)
+      show_help
+      ;;
+    version|--version|-v)
+      echo "dots version 2.0.0"
+      ;;
+    *)
+      ui_error "Unknown command: $cmd"
+      echo "Run 'dots --help' for available commands."
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

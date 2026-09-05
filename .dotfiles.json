@@ -1,0 +1,6 @@
+{
+  "version": "2.0.0",
+  "default_preset": "default",
+  "presets_dir": "presets",
+  "backup_dir": "~/.config/dotfiles-backups"
+}

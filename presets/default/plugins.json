@@ -1,0 +1,42 @@
+[
+  {
+    "id": "azterisk.display-manager",
+    "name": "omarchy-display-manager",
+    "description": "Interactive visual drag-and-drop monitor layout, per-monitor rotation, center offsets, and workspace renumbering",
+    "repository": "https://github.com/Azteriisk/omarchy-display-manager.git",
+    "type": "omarchy-cli",
+    "install": "omarchy plugin add https://github.com/Azteriisk/omarchy-display-manager.git --enable --yes"
+  },
+  {
+    "id": "azterisk.idle",
+    "name": "omarchy-idle-manager",
+    "description": "Screensaver & lock idle management, independent timers, Stay Awake modes, and top-bar popover",
+    "repository": "https://github.com/Azteriisk/omarchy-idle-manager.git",
+    "type": "omarchy-cli",
+    "install": "omarchy plugin add https://github.com/Azteriisk/omarchy-idle-manager.git --enable --yes"
+  },
+  {
+    "id": "azterisk.games",
+    "name": "omarchy-games",
+    "description": "Unified game library manager & launcher for Steam, Lutris, and RetroArch with dynamic game artwork",
+    "repository": "https://github.com/Azteriisk/omarchy-games.git",
+    "type": "omarchy-cli",
+    "install": "omarchy plugin add https://github.com/Azteriisk/omarchy-games.git --enable --yes"
+  },
+  {
+    "id": "azterisk.minimize",
+    "name": "omarchy-window-minimize",
+    "description": "Hyprland C++ CSD interceptor hook, window hiding/restoring, top-bar drawer badge, and shortcut bindings",
+    "repository": "https://github.com/Azteriisk/omarchy-window-minimize.git",
+    "type": "git-script",
+    "install": "git clone https://github.com/Azteriisk/omarchy-window-minimize.git /tmp/omarchy-window-minimize && (cd /tmp/omarchy-window-minimize && ./install.sh) && rm -rf /tmp/omarchy-window-minimize"
+  },
+  {
+    "id": "azterisk.wallpaper-engine",
+    "name": "omarchy-wallpaper-engine",
+    "description": "Steam Wallpaper Engine integration for Scene, Video, and HTML5 Web wallpapers, theme sync hook, and audio reactivity",
+    "repository": "https://github.com/Azteriisk/omarchy-wallpaper-engine.git",
+    "type": "git-script",
+    "install": "git clone https://github.com/Azteriisk/omarchy-wallpaper-engine.git /tmp/omarchy-wallpaper-engine && (cd /tmp/omarchy-wallpaper-engine && ./install.sh) && rm -rf /tmp/omarchy-wallpaper-engine"
+  }
+]

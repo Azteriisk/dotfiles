@@ -1,0 +1,20 @@
+{
+  "name": "minimal",
+  "title": "Minimal Terminal & CLI Environment",
+  "description": "Streamlined lightweight configuration focusing strictly on terminal emulator styling, starship prompt, and system monitoring.",
+  "author": "Azteriisk",
+  "version": "1.0.0",
+  "hooks": {
+    "post_apply": []
+  },
+  "tracked": {
+    "config_dirs": [
+      "ghostty",
+      "btop"
+    ],
+    "config_files": [
+      "starship.toml"
+    ],
+    "bin": false
+  }
+}
