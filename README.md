@@ -36,10 +36,11 @@ The installer will:
 The repository includes a standalone, zero-dependency CLI tool called `dots` that handles preset switching, live syncing, and system health audits.
 
 ```text
-     ___       __       _____ __         
- ___/ /____  / /_  ___/ / _//_/ ___ ___ 
-/ _  / _ \ \/ / /_/ _  / _// / / -_|_-< 
-\_,_/\___/\__/\__/\_,_/_/ /_/  \__/___/ 
+       __      __  _____ __          
+  ____/ /___  / /_/ __(_) /__  _____ 
+ / __  / __ \/ __/ /_/ / / _ \/ ___/ 
+/ /_/ / /_/ / /_/ __/ / /  __(__  )  
+\__,_/\____/\__/_/ /_/_/\___/____/   
   Multi-Preset System & Sync Framework
 ```
 
