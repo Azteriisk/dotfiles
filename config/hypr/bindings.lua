@@ -18,3 +18,7 @@ o.bind("SUPER + M", "Minimize window", minimize_cmd .. " minimize")
 o.bind("SUPER + ALT + M", "Restore all minimized windows", minimize_cmd .. " restore-all")
 o.bind("SUPER + CTRL + M", "Restore last minimized window", minimize_cmd .. " restore-last")
 o.bind("SUPER + mouse:274", "Minimize or restore on desktop click", minimize_cmd .. " mouse-action", { mouse = true })
+
+-- Force kill unresponsive window (click-to-kill crosshair)
+o.bind("SUPER + ALT + W", "Force kill window", "hyprctl kill")
+

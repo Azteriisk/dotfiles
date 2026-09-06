@@ -104,9 +104,13 @@ def reconcile_state() -> tuple[list[dict], list[dict]]:
         addr = item.get("address")
         if addr in client_map:
             live_win = client_map[addr]
-            if live_win.get("title"):
-                item["current_title"] = live_win["title"]
-            living.append(item)
+            at = live_win.get("at", [0, 0])
+            tags = live_win.get("tags", [])
+            # Window must be off-screen or tagged as minimized to be considered actively minimized
+            if at[0] >= 40000 or "minimized" in tags:
+                if live_win.get("title"):
+                    item["current_title"] = live_win["title"]
+                living.append(item)
     
     if len(living) != len(saved):
         save_state(living)
@@ -140,7 +144,7 @@ def get_app_group_index(state: list[dict], app_class: str) -> tuple[int, int]:
     return grp_idx, win_idx
 
 
-def cmd_minimize(target_addr: str | None = None) -> int:
+def cmd_minimize(target_addr: str | None = None, was_maximized: bool = False) -> int:
     """Minimize a window by moving it off-screen to its application group cluster."""
     living_state, clients = reconcile_state()
     client_map = {c.get("address"): c for c in clients if c.get("address")}
@@ -173,7 +177,8 @@ def cmd_minimize(target_addr: str | None = None) -> int:
     floating = bool(target_win.get("floating", False))
     at = target_win.get("at", [0, 0])
     size = target_win.get("size", [800, 600])
-    fullscreen = target_win.get("fullscreen", 0)
+    curr_fullscreen = target_win.get("fullscreen", 0)
+    saved_fullscreen = 1 if (was_maximized or curr_fullscreen == 1) else curr_fullscreen
     pinned = bool(target_win.get("pinned", False))
     monitor = target_win.get("monitor", 0)
 
@@ -194,7 +199,7 @@ def cmd_minimize(target_addr: str | None = None) -> int:
         "floating": floating,
         "at": at,
         "size": size,
-        "fullscreen": fullscreen,
+        "fullscreen": saved_fullscreen,
         "pinned": pinned,
         "monitor": monitor,
         "offscreen_at": [dest_x, dest_y],
@@ -205,9 +210,14 @@ def cmd_minimize(target_addr: str | None = None) -> int:
     # Prepare Lua dispatch commands
     dispatches = []
     
-    # 1. Un-fullscreen if needed
-    if fullscreen != 0:
-        dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{target_addr}", mode = "fullscreen" }})')
+    # 1. Un-fullscreen/un-maximize if needed so window can be moved off-screen.
+    # If was_maximized is True, the C++ plugin hook has already unmaximized the window in Hyprland
+    # before invoking this script. Dispatching fullscreen here would toggle it BACK to maximized!
+    if not was_maximized:
+        if curr_fullscreen == 1:
+            dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{target_addr}", mode = "maximized" }})')
+        elif curr_fullscreen == 2:
+            dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{target_addr}", mode = "fullscreen" }})')
         
     # 2. Float if currently tiled
     if not floating:
@@ -272,7 +282,9 @@ def cmd_restore_window(target_addr: str) -> int:
     else:
         dispatches.append(f'hl.dsp.window.float({{ window = "address:{target_addr}", action = "toggle" }})')
 
-    if orig_fullscreen > 0:
+    if orig_fullscreen == 1:
+        dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{target_addr}", mode = "maximized" }})')
+    elif orig_fullscreen == 2:
         dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{target_addr}", mode = "fullscreen" }})')
 
     if orig_pinned:
@@ -329,7 +341,9 @@ def cmd_restore_all() -> int:
         else:
             dispatches.append(f'hl.dsp.window.float({{ window = "address:{addr}", action = "toggle" }})')
 
-        if orig_fullscreen > 0:
+        if orig_fullscreen == 1:
+            dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{addr}", mode = "maximized" }})')
+        elif orig_fullscreen == 2:
             dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{addr}", mode = "fullscreen" }})')
 
         if orig_pinned:
@@ -398,7 +412,9 @@ def cmd_restore_app(app_class: str) -> int:
             dispatches.append(f'hl.dsp.window.resize({{ window = "address:{addr}", x = {orig_size[0]}, y = {orig_size[1]} }})')
         else:
             dispatches.append(f'hl.dsp.window.float({{ window = "address:{addr}", action = "toggle" }})')
-        if orig_fullscreen > 0:
+        if orig_fullscreen == 1:
+            dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{addr}", mode = "maximized" }})')
+        elif orig_fullscreen == 2:
             dispatches.append(f'hl.dsp.window.fullscreen({{ window = "address:{addr}", mode = "fullscreen" }})')
         dispatches.append(f'hl.dsp.window.tag({{ window = "address:{addr}", tag = "-minimized" }})')
         dispatches.append(f'hl.dsp.window.tag({{ window = "address:{addr}", tag = "-min_grp_{tag_clean}" }})')
@@ -563,6 +579,53 @@ def cmd_clean() -> int:
     return 0
 
 
+def cmd_maximize(target_addr: str | None = None) -> int:
+    """Toggle maximize state (monocle mode 1) for active or specified window."""
+    living_state, _ = reconcile_state()
+    if target_addr and not target_addr.startswith("0x"):
+        target_addr = "0x" + target_addr
+
+    # If the target window is currently minimized off-screen, restore it first
+    if target_addr and any(w.get("address") == target_addr for w in living_state):
+        cmd_restore_window(target_addr)
+
+    if target_addr:
+        dispatches = [
+            f'hl.dsp.focus({{ window = "address:{target_addr}" }})',
+            f'hl.dsp.window.fullscreen({{ window = "address:{target_addr}", mode = "maximized" }})'
+        ]
+    else:
+        dispatches = [
+            'hl.dsp.window.fullscreen({ mode = "maximized" })'
+        ]
+
+    success = execute_hypr_batch(dispatches)
+    return 0 if success else 1
+
+
+def cmd_close(target_addr: str | None = None) -> int:
+    """Close active or specified window, cleaning it from minimized state if needed."""
+    living_state, _ = reconcile_state()
+    if target_addr:
+        if not target_addr.startswith("0x"):
+            target_addr = "0x" + target_addr
+        remaining = [w for w in living_state if w.get("address") != target_addr]
+        if len(remaining) != len(living_state):
+            save_state(remaining)
+        dispatches = [f'hl.dsp.window.close({{ window = "address:{target_addr}" }})']
+    else:
+        active = get_hypr_json("activewindow")
+        if active and active.get("address"):
+            addr = active.get("address")
+            remaining = [w for w in living_state if w.get("address") != addr]
+            if len(remaining) != len(living_state):
+                save_state(remaining)
+        dispatches = ['hl.dsp.window.close()']
+
+    success = execute_hypr_batch(dispatches)
+    return 0 if success else 1
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Omarchy Window Minimize & Off-Screen Grouping CLI"
@@ -572,6 +635,17 @@ def main():
     # minimize
     min_parser = subparsers.add_parser("minimize", help="Minimize active or specified window")
     min_parser.add_argument("address", nargs="?", default=None, help="Window address (optional)")
+    min_parser.add_argument("--was-maximized", action="store_true", help="Window was previously maximized")
+
+    # maximize / toggle-maximize
+    max_parser = subparsers.add_parser("maximize", help="Maximize or toggle maximize for active or specified window")
+    max_parser.add_argument("address", nargs="?", default=None, help="Window address (optional)")
+    tmax_parser = subparsers.add_parser("toggle-maximize", help="Alias for maximize")
+    tmax_parser.add_argument("address", nargs="?", default=None, help="Window address (optional)")
+
+    # close
+    close_parser = subparsers.add_parser("close", help="Close active or specified window")
+    close_parser.add_argument("address", nargs="?", default=None, help="Window address (optional)")
 
     # mouse-action / smart-click
     subparsers.add_parser("mouse-action", help="Smart click: minimize window or unhide from desktop")
@@ -606,7 +680,14 @@ def main():
 
     if not args.action or args.action == "minimize":
         addr = getattr(args, "address", None)
-        sys.exit(cmd_minimize(addr))
+        was_max = getattr(args, "was_maximized", False)
+        sys.exit(cmd_minimize(addr, was_max))
+    elif args.action in ("maximize", "toggle-maximize"):
+        addr = getattr(args, "address", None)
+        sys.exit(cmd_maximize(addr))
+    elif args.action == "close":
+        addr = getattr(args, "address", None)
+        sys.exit(cmd_close(addr))
     elif args.action in ("mouse-action", "smart-click"):
         sys.exit(cmd_smart_click())
     elif args.action == "restore-all":

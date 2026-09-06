@@ -43,8 +43,9 @@ if [[ -d "$HOOK_DIR" ]]; then
   
   # Load into running Hyprland session
   if command -v hyprctl >/dev/null 2>&1; then
+    hyprctl plugin unload "$HOOK_SO" >/dev/null 2>&1 || true
     hyprctl plugin load "$HOOK_SO" >/dev/null 2>&1 || true
-    echo "  ✓ Loaded minimize-hook.so into Hyprland"
+    echo "  ✓ Loaded minimize-hook into Hyprland"
   fi
 fi
 
@@ -56,7 +57,7 @@ echo "  ✓ Symlinked omarchy-minimize to $CLI_TARGET"
 
 # 3. Register autostart hook in autostart.lua
 if [[ -f "$HYPR_AUTOSTART" ]]; then
-  if ! grep -q "minimize-hook.so" "$HYPR_AUTOSTART"; then
+  if ! grep -q "minimize-hook" "$HYPR_AUTOSTART"; then
     cat << 'AUTOSTART' >> "$HYPR_AUTOSTART"
 
 -- Load Window Minimize CSD Button Interceptor Hook
