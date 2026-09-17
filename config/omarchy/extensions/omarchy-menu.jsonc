@@ -57,10 +57,10 @@
   "games._rescan": {"icon": "", "label": "Rescan Game Libraries", "description": "Refresh Steam, Lutris & RetroArch games", "aliases": ["rescan", "refresh", "sync-games"], "action": "omarchy-games sync && notify-send -i input-gaming 'Omarchy Games' 'Game library rescanned successfully!'"},
   "setup.games": {"icon": "󰊴", "label": "Game Sources", "description": "Configure game libraries and paths", "aliases": ["game-sources", "steam-config", "lutris-config"], "action": "omarchy-games config"},
   // --- END OMARCHY GAMES ---
-,
+
   // --- BEGIN OMARCHY BOOT MANAGER ---
   "setup.boot": {"icon": "󰌿", "label": "Boot & Secure Boot", "description": "Windows dual-boot & Secure Boot configuration", "aliases": ["boot", "secure-boot", "windows-boot", "bios-setup"], "action": "omarchy-boot gui"},
   "system.reboot-windows": {"icon": "", "label": "Reboot into Windows", "description": "One-shot boot directly into Windows for next boot", "aliases": ["reboot-windows", "windows"], "action": "omarchy-boot reboot windows"},
-  "system.reboot-bios": {"icon": "󰒔", "label": "Reboot into BIOS Setup", "description": "Reboot straight to motherboard UEFI firmware", "aliases": ["reboot-bios", "bios", "uefi"], "action": "omarchy-boot reboot bios"},
+  "system.reboot-bios": {"icon": "󰒔", "label": "Reboot into BIOS Setup", "description": "Reboot straight to motherboard UEFI firmware", "aliases": ["reboot-bios", "bios", "uefi"], "action": "omarchy-boot reboot bios"}
   // --- END OMARCHY BOOT MANAGER ---
 }
