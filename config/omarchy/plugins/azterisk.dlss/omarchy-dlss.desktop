@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Omarchy DLSS 5
+GenericName=DLSS 5 Neural Rendering Manager
+Comment=One-click NVIDIA DLSS 5 Neural Rendering for Steam Proton Games
+Exec=omarchy-dlss gui
+Icon=video-display
+Terminal=false
+Type=Application
+Categories=Game;Settings;HardwareSettings;
+Keywords=DLSS;DLSS5;NVIDIA;Proton;Steam;Upscaling;Neural;

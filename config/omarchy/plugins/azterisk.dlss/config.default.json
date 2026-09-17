@@ -1,0 +1,25 @@
+{
+  "general": {
+    "default_preset": "balanced",
+    "allow_anti_cheat_bypass": false,
+    "auto_patch_registry": true
+  },
+  "presets": {
+    "quality": {
+      "scale": 0.90,
+      "strength": 1.2
+    },
+    "balanced": {
+      "scale": 0.85,
+      "strength": 1.2
+    },
+    "performance": {
+      "scale": 0.75,
+      "strength": 1.0
+    }
+  },
+  "ui": {
+    "widget_icon": "󱚤",
+    "show_bar_widget": true
+  }
+}

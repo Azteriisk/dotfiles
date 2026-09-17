@@ -182,11 +182,7 @@ BarIndicator {
                 text: modelData.label
                 tooltipText: modelData.tooltip
                 bordered: true
-                selected: {
-                  if (!root.idleService) return false
-                  if (modelData.value === 0) return !root.idleService.screensaverEnabled
-                  return root.idleService.screensaverEnabled && root.idleService.screensaverTimeoutSeconds === modelData.value
-                }
+                selected: Boolean(root.idleService && (modelData.value === 0 ? !root.idleService.screensaverEnabled : (root.idleService.screensaverEnabled && root.idleService.screensaverTimeoutSeconds === modelData.value)))
                 onClicked: if (root.idleService) root.idleService.setScreensaverTimeout(modelData.value)
               }
             }
@@ -224,11 +220,7 @@ BarIndicator {
                 text: modelData.label
                 tooltipText: modelData.tooltip
                 bordered: true
-                selected: {
-                  if (!root.idleService) return false
-                  if (modelData.value === 0) return !root.idleService.lockEnabled
-                  return root.idleService.lockEnabled && root.idleService.lockTimeoutSeconds === modelData.value
-                }
+                selected: Boolean(root.idleService && (modelData.value === 0 ? !root.idleService.lockEnabled : (root.idleService.lockEnabled && root.idleService.lockTimeoutSeconds === modelData.value)))
                 onClicked: if (root.idleService) root.idleService.setLockTimeout(modelData.value)
               }
             }

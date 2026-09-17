@@ -1,0 +1,226 @@
+#!/usr/bin/env python3
+"""
+omarchy-dlss — Native DLSS 5 (Neural Rendering) Manager for Omarchy
+Automates DLSS 5 installation, compatibility scanning, and Proton registry patching.
+"""
+
+import sys
+import os
+import json
+import argparse
+import subprocess
+from pathlib import Path
+
+# Add core engine to path
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from core.steam_scanner import scan_games
+from core.dlss_manager import (
+    enable_dlss5, disable_dlss5, get_game_by_query, PRESETS
+)
+
+# ANSI Colors
+BOLD = "\033[1m"
+RESET = "\033[0m"
+GREEN = "\033[32m"
+BLUE = "\033[34m"
+YELLOW = "\033[33m"
+RED = "\033[31m"
+CYAN = "\033[36m"
+GRAY = "\033[90m"
+
+
+def cmd_list(args):
+    games = scan_games()
+    print(f"\n{BOLD}󱚤 Omarchy DLSS 5 — Discovered Steam Games ({len(games)}){RESET}\n")
+
+    # Header
+    print(f"{BOLD}{'APPID':<10} {'STATUS':<20} {'GAME TITLE':<35} {'ENGINE / ARCH':<20}{RESET}")
+    print(f"{GRAY}{'-'*85}{RESET}")
+
+    for g in games:
+        appid = g["appid"]
+        title = g["name"]
+        if len(title) > 33:
+            title = title[:30] + "..."
+
+        arch = g["pe_format"]
+        badge = g["badge"]
+
+        if badge == "ACTIVE":
+            status_str = f"{GREEN}● ACTIVE{RESET}"
+        elif badge == "COMPATIBLE":
+            status_str = f"{CYAN}✓ COMPATIBLE{RESET}"
+        elif badge == "ANTI-CHEAT":
+            status_str = f"{YELLOW}⚠ ANTI-CHEAT{RESET}"
+        else:
+            status_str = f"{RED}✗ INCOMPATIBLE{RESET}"
+
+        print(f"{appid:<10} {status_str:<29} {title:<35} {arch:<20}")
+
+    print(f"\n{GRAY}To enable DLSS 5 for a game: {CYAN}omarchy-dlss enable <appid|name>{RESET}\n")
+
+
+def cmd_enable(args):
+    game = get_game_by_query(args.game)
+    if not game:
+        print(f"{RED}[✗] Error: Game matching '{args.game}' not found.{RESET}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"\n{BOLD}Enabling DLSS 5 Neural Rendering for: {CYAN}{game['name']}{RESET} (AppID {game['appid']})")
+    print(f"Target Directory: {GRAY}{game['dlss_target_dir']}{RESET}")
+
+    if game["anti_cheat"] and not args.force:
+        print(f"\n{YELLOW}WARNING: {game['name']} uses {game['anti_cheat']}.{RESET}")
+        print(f"Injecting custom DLLs into anti-cheat protected titles can result in multiplayer bans.")
+        print(f"If you wish to proceed anyway (e.g. offline mode), pass {BOLD}--force{RESET}.\n")
+        sys.exit(1)
+
+    if not game["is_64bit"] and not args.force:
+        print(f"\n{RED}[✗] Incompatible Architecture: {game['status_desc']}{RESET}")
+        print("DLSS 5 requires a 64-bit engine architecture.\n")
+        sys.exit(1)
+
+    preset = args.preset
+    res = enable_dlss5(game, preset=preset, force=args.force)
+
+    if res["success"]:
+        print(f"\n{GREEN}[✓] Successfully deployed DLSS 5 with preset: {BOLD}{preset.upper()}{RESET}")
+        for fname, method in res["files"].items():
+            print(f"    {GRAY}• {fname} ({method}){RESET}")
+
+        if res["registry_applied"]:
+            print(f"{GREEN}[✓] Wine prefix registry patched with dxgi override (Zero launch options needed!){RESET}")
+        else:
+            print(f"{YELLOW}[!] Notice: Wine prefix not yet initialized or patched.{RESET}")
+
+        print(f"\n{BOLD}Ready! Launch the game directly in Steam to experience DLSS 5.{RESET}\n")
+    else:
+        print(f"\n{RED}[✗] Failed to enable DLSS 5: {res.get('error')}{RESET}\n", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_disable(args):
+    game = get_game_by_query(args.game)
+    if not game:
+        print(f"{RED}[✗] Error: Game matching '{args.game}' not found.{RESET}", file=sys.stderr)
+        sys.exit(1)
+
+    print(f"\n{BOLD}Disabling DLSS 5 and cleaning up: {CYAN}{game['name']}{RESET}")
+    res = disable_dlss5(game)
+
+    if res["success"]:
+        print(f"{GREEN}[✓] Cleaned up {len(res['removed_files'])} DLLs/config files.{RESET}")
+        if res["registry_reverted"]:
+            print(f"{GREEN}[✓] Reverted Proton prefix registry overrides to stock.{RESET}")
+        print(f"{BOLD}Game restored to pristine stock state.{RESET}\n")
+    else:
+        print(f"{RED}[✗] Error during disable: {res}{RESET}\n", file=sys.stderr)
+
+
+def cmd_status(args):
+    if args.game:
+        game = get_game_by_query(args.game)
+        if not game:
+            print(f"{RED}[✗] Game not found: {args.game}{RESET}", file=sys.stderr)
+            sys.exit(1)
+
+        print(f"\n{BOLD}DLSS 5 Status: {CYAN}{game['name']}{RESET} (AppID {game['appid']})")
+        print(f"{GRAY}{'-'*50}{RESET}")
+        print(f"Architecture : {game['pe_format']}")
+        print(f"Compatible   : {GREEN if game['compatible'] else RED}{game['compatible']}{RESET}")
+        print(f"Anti-Cheat   : {YELLOW if game['anti_cheat'] else GRAY}{game['anti_cheat'] or 'None'}{RESET}")
+        print(f"DLSS5 Active : {GREEN if game['dlss5_active'] else GRAY}{game['dlss5_active']}{RESET}")
+        print(f"Files Present: {game['has_files']}")
+        print(f"Reg Override : {game['has_registry']}")
+        print(f"Game Path    : {game['game_path']}")
+        print(f"Target Exe   : {game['primary_exe']}\n")
+    else:
+        games = scan_games()
+        active = [g for g in games if g["dlss5_active"]]
+        compat = [g for g in games if g["compatible"]]
+        print(f"\n{BOLD}󱚤 Omarchy DLSS 5 Summary:{RESET}")
+        print(f"  • Installed Games : {len(games)}")
+        print(f"  • Compatible Games: {len(compat)}")
+        print(f"  • Active DLSS 5   : {GREEN}{len(active)}{RESET}\n")
+
+
+def cmd_json(args):
+    games = scan_games()
+    print(json.dumps(games, indent=2))
+
+
+def cmd_gui(args):
+    gui_script = SCRIPT_DIR / "omarchy-dlss-gui"
+    if gui_script.is_file():
+        os.execv(sys.executable, [sys.executable, str(gui_script)])
+    else:
+        print(f"{RED}[✗] GUI script not found at {gui_script}{RESET}", file=sys.stderr)
+        sys.exit(1)
+
+
+def cmd_menu(args):
+    menu_script = SCRIPT_DIR / "omarchy-dlss-menu"
+    if menu_script.is_file():
+        os.execv(sys.executable, [sys.executable, str(menu_script)])
+    else:
+        print(f"{RED}[✗] Menu script not found at {menu_script}{RESET}", file=sys.stderr)
+        sys.exit(1)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        prog="omarchy-dlss",
+        description="Omarchy DLSS 5 (Neural Rendering) Platform Manager"
+    )
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+
+    # list
+    p_list = subparsers.add_parser("list", help="List discovered games and DLSS 5 compatibility")
+
+    # enable
+    p_enable = subparsers.add_parser("enable", help="Enable DLSS 5 for a game")
+    p_enable.add_argument("game", help="AppID or Game Title")
+    p_enable.add_argument("--preset", choices=["quality", "balanced", "performance"], default="balanced",
+                          help="Performance/Quality preset (default: balanced)")
+    p_enable.add_argument("--force", action="store_true", help="Force installation regardless of safety checks")
+
+    # disable
+    p_disable = subparsers.add_parser("disable", help="Disable DLSS 5 and restore stock game files")
+    p_disable.add_argument("game", help="AppID or Game Title")
+
+    # status
+    p_status = subparsers.add_parser("status", help="Show DLSS 5 health check")
+    p_status.add_argument("game", nargs="?", help="Optional AppID or Game Title")
+
+    # json
+    p_json = subparsers.add_parser("json", help="Output all games as JSON (for Omarchy shell/GUI)")
+
+    # gui
+    p_gui = subparsers.add_parser("gui", help="Open the graphical DLSS 5 manager")
+
+    # menu
+    p_menu = subparsers.add_parser("menu", help="Open interactive terminal menu")
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(0)
+
+    dispatch = {
+        "list": cmd_list,
+        "enable": cmd_enable,
+        "disable": cmd_disable,
+        "status": cmd_status,
+        "json": cmd_json,
+        "gui": cmd_gui,
+        "menu": cmd_menu
+    }
+
+    dispatch[args.command](args)
+
+
+if __name__ == "__main__":
+    main()

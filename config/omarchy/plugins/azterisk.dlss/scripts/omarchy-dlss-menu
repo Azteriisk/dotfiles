@@ -1,0 +1,125 @@
+#!/usr/bin/env python3
+"""
+omarchy-dlss-menu — Interactive terminal picker for Omarchy DLSS 5.
+"""
+
+import sys
+import os
+import shutil
+import subprocess
+from pathlib import Path
+
+# Add core engine to path
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from core.steam_scanner import scan_games
+from core.dlss_manager import enable_dlss5, disable_dlss5
+
+BOLD = "\033[1m"
+RESET = "\033[0m"
+GREEN = "\033[32m"
+CYAN = "\033[36m"
+YELLOW = "\033[33m"
+RED = "\033[31m"
+GRAY = "\033[90m"
+
+
+def main():
+    print(f"\n{BOLD}󱚤 Omarchy DLSS 5 — Interactive Selector{RESET}\n")
+    games = scan_games()
+    if not games:
+        print("No Steam games found.")
+        return
+
+    # Check if fzf is available
+    has_fzf = shutil.which("fzf") is not None
+
+    if has_fzf:
+        lines = []
+        for g in games:
+            badge = g["badge"]
+            line = f"{g['appid']} | [{badge:^12}] {g['name']} ({g['pe_format']})"
+            lines.append(line)
+
+        p = subprocess.Popen(
+            ["fzf", "--prompt=Select Game > ", "--header=Omarchy DLSS 5 Manager", "--reverse"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            text=True
+        )
+        out, _ = p.communicate("\n".join(lines))
+        if not out.strip():
+            print("Cancelled.")
+            return
+
+        selected_appid = out.split("|")[0].strip()
+        selected_game = next((g for g in games if str(g["appid"]) == selected_appid), None)
+    else:
+        for idx, g in enumerate(games, 1):
+            badge = g["badge"]
+            color = GREEN if badge == "ACTIVE" else (CYAN if badge == "COMPATIBLE" else (YELLOW if badge == "ANTI-CHEAT" else RED))
+            print(f"{BOLD}[{idx:2d}]{RESET} {color}[{badge:^12}]{RESET} {g['name']} {GRAY}(AppID {g['appid']}){RESET}")
+
+        print(f"\n{GRAY}Enter game number (or 'q' to quit):{RESET} ", end="")
+        choice = input().strip()
+        if choice.lower() in ["q", "quit", "exit", ""]:
+            return
+
+        try:
+            val = int(choice)
+            if 1 <= val <= len(games):
+                selected_game = games[val - 1]
+            else:
+                print("Invalid selection.")
+                return
+        except ValueError:
+            print("Invalid input.")
+            return
+
+    if not selected_game:
+        return
+
+    print(f"\n{BOLD}Selected:{RESET} {CYAN}{selected_game['name']}{RESET} (AppID {selected_game['appid']})")
+    print(f"Status:   {selected_game['status_desc']}")
+    print(f"DLSS 5:   {GREEN + 'Active' if selected_game['dlss5_active'] else GRAY + 'Disabled'}{RESET}\n")
+
+    if not selected_game["compatible"]:
+        print(f"{RED}[✗] This game cannot run DLSS 5: {selected_game['status_desc']}{RESET}\n")
+        return
+
+    if selected_game["dlss5_active"]:
+        print("Options:")
+        print("  [1] Switch to Quality preset (0.90)")
+        print("  [2] Switch to Balanced preset (0.85)")
+        print("  [3] Switch to Performance preset (0.75)")
+        print(f"  {RED}[4] Disable & Revert to Stock{RESET}")
+        print("  [5] Exit")
+    else:
+        print("Options:")
+        print(f"  {GREEN}[1] Enable with Balanced Preset (Recommended: 0.85 scale){RESET}")
+        print(f"  {CYAN}[2] Enable with Quality Preset (0.90 scale, RTX 5070+){RESET}")
+        print(f"  {YELLOW}[3] Enable with Performance Preset (0.75 scale){RESET}")
+        print("  [4] Exit")
+
+    opt = input("\nSelect option > ").strip()
+    if opt == "1":
+        preset = "quality" if selected_game["dlss5_active"] else "balanced"
+        res = enable_dlss5(selected_game, preset=preset, force=True)
+        print(f"\n{GREEN}[✓] DLSS 5 {preset.upper()} enabled!{RESET}\n")
+    elif opt == "2":
+        preset = "balanced" if selected_game["dlss5_active"] else "quality"
+        res = enable_dlss5(selected_game, preset=preset, force=True)
+        print(f"\n{GREEN}[✓] DLSS 5 {preset.upper()} enabled!{RESET}\n")
+    elif opt == "3":
+        res = enable_dlss5(selected_game, preset="performance", force=True)
+        print(f"\n{GREEN}[✓] DLSS 5 PERFORMANCE enabled!{RESET}\n")
+    elif opt == "4" and selected_game["dlss5_active"]:
+        res = disable_dlss5(selected_game)
+        print(f"\n{GREEN}[✓] DLSS 5 disabled. Game restored to stock.{RESET}\n")
+    else:
+        print("Exiting.")
+
+
+if __name__ == "__main__":
+    main()

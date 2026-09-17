@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/omarchy/shell/main/schemas/plugin-manifest.v1.json",
+  "schemaVersion": 1,
+  "id": "azterisk.dlss",
+  "name": "Omarchy DLSS 5",
+  "description": "NVIDIA DLSS 5 Neural Rendering manager for Steam Proton games",
+  "version": "1.0.0",
+  "author": "azterisk",
+  "license": "MIT",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "DLSS 5",
+    "description": "Quick status and 1-click DLSS 5 profile management",
+    "category": "Gaming",
+    "allowMultiple": false
+  }
+}

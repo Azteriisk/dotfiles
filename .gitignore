@@ -20,6 +20,8 @@ Thumbs.db
 *.o
 *.so
 *.a
+*.dll
+config/omarchy/plugins/azterisk.dlss/assets/bin/
 
 # Ignore nested git repositories in plugins if any
 **/.git/
@@ -39,3 +41,7 @@ id_ed25519*
 
 # Dotfiles safety backups
 dotfiles-backup*
+
+# Python cache
+*.pyc
+__pycache__/

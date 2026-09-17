@@ -1,0 +1,291 @@
+#!/usr/bin/env python3
+"""
+omarchy-dlss-gui — Sleek Libadwaita / GTK4 GUI for Omarchy DLSS 5 Manager.
+Provides non-technical users with a 1-click toggle and persistent preset selector for DLSS 5.
+"""
+
+import sys
+import os
+from pathlib import Path
+
+# Add core engine to path
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+import gi
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+from gi.repository import Gtk, Adw, Gio, GLib, Pango
+
+from core.steam_scanner import scan_games
+from core.dlss_manager import enable_dlss5, disable_dlss5, update_game_preset, PRESETS
+
+
+class DlssApp(Adw.Application):
+    def __init__(self):
+        super().__init__(
+            application_id="org.omarchy.dlss",
+            flags=Gio.ApplicationFlags.FLAGS_NONE
+        )
+
+    def do_activate(self):
+        win = self.props.active_window
+        if not win:
+            win = DlssWindow(application=self)
+        win.present()
+
+
+class DlssWindow(Adw.ApplicationWindow):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.set_title("Omarchy DLSS 5 Enhancer")
+        self.set_default_size(780, 680)
+
+        self.games_data = []
+        self.game_rows = {}
+
+        self.setup_ui()
+        self.refresh_games()
+
+    def setup_ui(self):
+        # Main box
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.set_content(main_box)
+
+        # Header bar
+        header = Adw.HeaderBar()
+        title = Adw.WindowTitle(title="Omarchy DLSS 5", subtitle="Neural Rendering Manager")
+        header.set_title_widget(title)
+
+        # Refresh button
+        btn_refresh = Gtk.Button(icon_name="view-refresh-symbolic")
+        btn_refresh.set_tooltip_text("Rescan Steam Libraries")
+        btn_refresh.connect("clicked", lambda b: self.refresh_games())
+        header.pack_start(btn_refresh)
+
+        main_box.append(header)
+
+        # Search Bar
+        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
+        search_box.set_margin_top(12)
+        search_box.set_margin_bottom(6)
+        search_box.set_margin_start(24)
+        search_box.set_margin_end(24)
+
+        self.search_entry = Gtk.SearchEntry()
+        self.search_entry.set_placeholder_text("Search installed games...")
+        self.search_entry.set_hexpand(True)
+        self.search_entry.connect("search-changed", self.on_search_changed)
+        search_box.append(self.search_entry)
+
+        main_box.append(search_box)
+
+        # Scrolled Window
+        scrolled = Gtk.ScrolledWindow()
+        scrolled.set_vexpand(True)
+        main_box.append(scrolled)
+
+        # Preferences Page
+        self.pref_page = Adw.PreferencesPage()
+        scrolled.set_child(self.pref_page)
+
+        # Banner Card (Hardware & Status summary)
+        self.status_group = Adw.PreferencesGroup(title="System Status")
+        self.status_row = Adw.ActionRow(
+            title="NVIDIA RTX Neural Engine Active",
+            subtitle="Discovering Steam game directories across mounted drives..."
+        )
+        self.status_row.set_icon_name("video-display-symbolic")
+        self.status_group.add(self.status_row)
+        self.pref_page.add(self.status_group)
+
+        # Games Group
+        self.games_group = Adw.PreferencesGroup(
+            title="Installed Games",
+            description="Toggle DLSS 5 Neural Rendering on or off. Zero Steam launch option configuration required."
+        )
+        self.pref_page.add(self.games_group)
+
+    def refresh_games(self):
+        # Clear existing rows
+        for row in list(self.game_rows.values()):
+            self.games_group.remove(row["row"])
+        self.game_rows.clear()
+
+        # Scan
+        self.games_data = scan_games()
+
+        active_count = sum(1 for g in self.games_data if g["dlss5_active"])
+        compat_count = sum(1 for g in self.games_data if g["compatible"])
+
+        self.status_row.set_subtitle(
+            f"{len(self.games_data)} games found • {compat_count} compatible • {active_count} active DLSS 5 profiles"
+        )
+
+        for game in self.games_data:
+            self.create_game_row(game)
+
+    def create_game_row(self, game):
+        row = Adw.ActionRow()
+        row.set_title(game["name"])
+
+        # Subtitle with details
+        appid = game["appid"]
+        arch = game["pe_format"]
+        desc = game["status_desc"]
+        row.set_subtitle(f"AppID {appid} • {arch} • {desc}")
+
+        # Status Icon
+        icon = Gtk.Image()
+        badge = game["badge"]
+        if badge == "ACTIVE":
+            icon.set_from_icon_name("emblem-ok-symbolic")
+            icon.add_css_class("success")
+        elif badge == "COMPATIBLE":
+            icon.set_from_icon_name("software-update-available-symbolic")
+            icon.add_css_class("accent")
+        elif badge == "ANTI-CHEAT":
+            icon.set_from_icon_name("dialog-warning-symbolic")
+            icon.add_css_class("warning")
+        else:
+            icon.set_from_icon_name("action-unavailable-symbolic")
+            icon.add_css_class("dim-label")
+
+        row.add_prefix(icon)
+
+        # Suffix controls
+        ctrl_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        ctrl_box.set_valign(Gtk.Align.CENTER)
+
+        # Preset Dropdown
+        preset_dropdown = Gtk.DropDown.new_from_strings([
+            "Balanced (Recommended)",
+            "Quality (RTX 5070+)",
+            "Performance (High FPS)"
+        ])
+        preset_map = {
+            "balanced": 0,
+            "quality": 1,
+            "performance": 2
+        }
+        rev_preset_map = {
+            0: "balanced",
+            1: "quality",
+            2: "performance"
+        }
+        active_preset = game.get("active_preset", "balanced")
+        preset_dropdown.set_selected(preset_map.get(active_preset, 0))
+        preset_dropdown.set_sensitive(game["compatible"])
+
+        # Preset change listener
+        def on_preset_changed(dd, param, g=game, r=row):
+            new_preset = rev_preset_map.get(dd.get_selected(), "balanced")
+            g["active_preset"] = new_preset
+            update_game_preset(g, new_preset)
+            if g.get("dlss5_active"):
+                r.set_subtitle(f"AppID {g['appid']} • DLSS 5 ACTIVE ({new_preset.upper()}) • Prefix auto-patched")
+
+        preset_dropdown.connect("notify::selected", on_preset_changed)
+
+        ctrl_box.append(preset_dropdown)
+
+        # Switch Toggle
+        switch = Gtk.Switch()
+        switch.set_valign(Gtk.Align.CENTER)
+        switch.set_active(game["dlss5_active"])
+
+        if not game["compatible"]:
+            switch.set_sensitive(False)
+            row.set_tooltip_text(game["status_desc"])
+        elif game["anti_cheat"]:
+            row.set_tooltip_text(f"Warning: {game['name']} uses {game['anti_cheat']}. Multiplayer risk.")
+
+        # Event handler for toggle
+        switch.connect("state-set", lambda sw, state, g=game, pd=preset_dropdown, r=row, ic=icon: self.on_game_toggled(sw, state, g, pd, r, ic))
+
+        ctrl_box.append(switch)
+        row.add_suffix(ctrl_box)
+
+        self.games_group.add(row)
+        self.game_rows[game["appid"]] = {
+            "row": row,
+            "game": game,
+            "switch": switch,
+            "dropdown": preset_dropdown,
+            "icon": icon
+        }
+
+    def on_game_toggled(self, switch, target_state, game, dropdown, row, icon):
+        preset_map = {
+            0: "balanced",
+            1: "quality",
+            2: "performance"
+        }
+        preset = preset_map.get(dropdown.get_selected(), "balanced")
+
+        if target_state:
+            # Check Anti-cheat warning
+            if game["anti_cheat"]:
+                dialog = Adw.MessageDialog.new(
+                    self,
+                    f"Anti-Cheat Warning: {game['name']}",
+                    f"This game uses {game['anti_cheat']}. Injecting custom DLLs in multiplayer games can lead to account bans.\n\nOnly proceed if you intend to play strictly offline."
+                )
+                dialog.add_response("cancel", "Cancel")
+                dialog.add_response("proceed", "Enable Anyway")
+                dialog.set_response_appearance("proceed", Adw.ResponseAppearance.DESTRUCTIVE)
+
+                def on_dialog_response(dlg, response):
+                    if response == "proceed":
+                        self.apply_enable(game, preset, switch, row, icon)
+                    else:
+                        switch.set_active(False)
+
+                dialog.connect("response", on_dialog_response)
+                dialog.present()
+                return True
+            else:
+                self.apply_enable(game, preset, switch, row, icon)
+        else:
+            self.apply_disable(game, switch, row, icon)
+
+        return False
+
+    def apply_enable(self, game, preset, switch, row, icon):
+        res = enable_dlss5(game, preset=preset, force=True)
+        if res["success"]:
+            game["dlss5_active"] = True
+            game["active_preset"] = preset
+            icon.set_from_icon_name("emblem-ok-symbolic")
+            icon.remove_css_class("accent")
+            icon.remove_css_class("warning")
+            icon.add_css_class("success")
+            row.set_subtitle(f"AppID {game['appid']} • DLSS 5 ACTIVE ({preset.upper()}) • Prefix auto-patched")
+        else:
+            switch.set_active(False)
+
+    def apply_disable(self, game, switch, row, icon):
+        res = disable_dlss5(game)
+        if res["success"]:
+            game["dlss5_active"] = False
+            icon.set_from_icon_name("software-update-available-symbolic")
+            icon.remove_css_class("success")
+            icon.add_css_class("accent")
+            preset_name = game.get("active_preset", "balanced").upper()
+            row.set_subtitle(f"AppID {game['appid']} • {game['pe_format']} • Ready for DLSS 5 ({preset_name})")
+
+    def on_search_changed(self, entry):
+        text = entry.get_text().strip().lower()
+        for appid, item in self.game_rows.items():
+            name = item["game"]["name"].lower()
+            match = (not text) or (text in name) or (text in str(appid))
+            item["row"].set_visible(match)
+
+
+def main():
+    app = DlssApp()
+    return app.run(sys.argv)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
