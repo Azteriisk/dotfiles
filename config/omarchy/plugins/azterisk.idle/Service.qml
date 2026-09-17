@@ -17,13 +17,17 @@ Item {
   readonly property int defaultScreensaverSeconds: 150
   readonly property int defaultLockSeconds: 300
   readonly property var idleConfig: (shell && shell.idleConfig) ? shell.idleConfig : ((shell && shell.shellConfig && shell.shellConfig.idle) ? shell.shellConfig.idle : ({}))
-  readonly property int screensaverTimeoutSeconds: secondsFromConfig(idleConfig.screensaver, defaultScreensaverSeconds)
-  readonly property int lockTimeoutSeconds: secondsFromConfig(idleConfig.lock, defaultLockSeconds)
+  property string localStayAwakeMode: ""
+  property int localScreensaverSeconds: -1
+  property int localLockSeconds: -1
+
+  readonly property int screensaverTimeoutSeconds: localScreensaverSeconds >= 0 ? localScreensaverSeconds : secondsFromConfig(idleConfig.screensaver, defaultScreensaverSeconds)
+  readonly property int lockTimeoutSeconds: localLockSeconds >= 0 ? localLockSeconds : secondsFromConfig(idleConfig.lock, defaultLockSeconds)
 
   // Configurable stay awake mode:
   // - "screensaver-only" (default): Runs screensaver when idle, inhibits lock
   // - "full" / "inhibit-all": Inhibits both screensaver and lock
-  readonly property string stayAwakeMode: idleConfig.stayAwakeMode !== undefined ? String(idleConfig.stayAwakeMode) : "screensaver-only"
+  readonly property string stayAwakeMode: localStayAwakeMode !== "" ? localStayAwakeMode : (idleConfig.stayAwakeMode !== undefined ? String(idleConfig.stayAwakeMode) : "screensaver-only")
   readonly property bool stayAwakeAllowsScreensaver: stayAwakeMode !== "full" && stayAwakeMode !== "inhibit-all"
 
   // Lock is enabled ONLY when stay-awake is inactive and lockTimeout is greater than 0
@@ -71,28 +75,43 @@ Item {
     console.log("omarchy idle " + root.lastEventAt + " " + root.lastEvent)
   }
 
+  Process {
+    id: configUpdater
+  }
+
   function updateIdleConfig(changes) {
-    if (root.shell && typeof root.shell.mutateShellConfig === "function") {
-      root.shell.mutateShellConfig(function(config) {
-        if (!config.idle || typeof config.idle !== "object") config.idle = {}
-        for (var k in changes) {
-          config.idle[k] = changes[k]
-        }
-      })
-    }
+    var changesJson = JSON.stringify(changes)
+    configUpdater.command = [
+      "python3", "-c",
+      "import json, sys\n" +
+      "from pathlib import Path\n" +
+      "p = Path.home() / '.config' / 'omarchy' / 'shell.json'\n" +
+      "try:\n" +
+      "    data = json.loads(p.read_text('utf-8'))\n" +
+      "    if not isinstance(data.get('idle'), dict): data['idle'] = {}\n" +
+      "    changes = json.loads(sys.argv[1])\n" +
+      "    for k, v in changes.items(): data['idle'][k] = v\n" +
+      "    p.write_text(json.dumps(data, indent=2), encoding='utf-8')\n" +
+      "except Exception as e: print(e, file=sys.stderr)\n",
+      changesJson
+    ]
+    configUpdater.running = true
   }
 
   function setStayAwakeMode(mode) {
+    root.localStayAwakeMode = mode
     logEvent("config-change", "stayAwakeMode=" + mode)
     updateIdleConfig({ stayAwakeMode: mode })
   }
 
   function setScreensaverTimeout(seconds) {
+    root.localScreensaverSeconds = seconds
     logEvent("config-change", "screensaver=" + seconds)
     updateIdleConfig({ screensaver: seconds })
   }
 
   function setLockTimeout(seconds) {
+    root.localLockSeconds = seconds
     logEvent("config-change", "lock=" + seconds)
     updateIdleConfig({ lock: seconds })
   }
@@ -416,7 +435,12 @@ Item {
     }
 
     function toggle(): string {
-      return root.setIdleEnabled(!root.idleEnabled)
+      return root.applyStayAwake(!root.stayAwake, true, "ipc")
+    }
+
+    function setStayAwake(value: string): string {
+      var enabled = value === "true" || value === "1"
+      return root.applyStayAwake(enabled, true, "ipc")
     }
 
     function setStayAwakeMode(mode: string): string {
