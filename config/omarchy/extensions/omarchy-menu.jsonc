@@ -31,7 +31,7 @@
   // Root Menu: Games folder (positioned directly under Apps)
   "games": {"icon": "󰊴", "label": "Games", "aliases": ["game", "games", "gaming", "steam", "lutris", "retroarch"]},
 
-  // Indexed games (19 found, with dynamic game artwork)
+  // Indexed games (21 found, with dynamic game artwork)
   "games.steam-714010": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/714010/15347de11efc127539c388e585af9e92d10d5189.jpg", "label": "Aimlabs", "description": "Steam · Installed", "aliases": ["steam", "aimlabs"], "action": "uwsm-app -- steam steam://rungameid/714010"},
   "games.steam-813230": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/813230/860b275ec0e63d6a74f6f3f9fc8dd75a49065f07.jpg", "label": "ANIMAL WELL", "description": "Steam · Installed", "aliases": ["steam", "animal well", "aw"], "action": "uwsm-app -- steam steam://rungameid/813230"},
   "games.steam-409720": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/409720/97527a02b36f8ac4aba21005c2d953cc908a08e1.jpg", "label": "BioShock 2 Remastered", "description": "Steam · Installed", "aliases": ["steam", "bioshock 2 remastered", "b2r"], "action": "uwsm-app -- steam steam://rungameid/409720"},
@@ -46,6 +46,8 @@
   "games.steam-1091500": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/1091500/6897c3848f3e0350d512f59d5bae174a1e3739f9.jpg", "label": "Cyberpunk 2077", "description": "Steam · Installed", "aliases": ["steam", "cyberpunk 2077", "c2"], "action": "uwsm-app -- steam steam://rungameid/1091500"},
   "games.steam-1245620": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/1245620/b6e290dd5a92ce98f89089a207733c70c41a1871.jpg", "label": "ELDEN RING", "description": "Steam · Installed", "aliases": ["steam", "elden ring", "er"], "action": "uwsm-app -- steam steam://rungameid/1245620"},
   "games.steam-2144740": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/2144740/39fc0a6b7051f744c725f1fc518a8996b859e86d.jpg", "label": "Ghostrunner 2", "description": "Steam · Installed", "aliases": ["steam", "ghostrunner 2", "g2"], "action": "uwsm-app -- steam steam://rungameid/2144740"},
+  "games.steam-275850": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/275850/fccb20f309ac5ae05b3cb4576a8a3357edf86f2e.jpg", "label": "No Man's Sky", "description": "Steam · Installed", "aliases": ["steam", "no man's sky", "no man s sky", "nmss"], "action": "uwsm-app -- steam steam://rungameid/275850"},
+  "games.steam-3764200": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/3764200/382b0b74c3154fae52a33be0108e1748f87a9478.jpg", "label": "Resident Evil Requiem", "description": "Steam · Installed", "aliases": ["steam", "resident evil requiem", "rer"], "action": "uwsm-app -- steam steam://rungameid/3764200"},
   "games.steam-1739300": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/1739300/25e578c627d661a2645e41f43a76b3c44502bc6a.jpg", "label": "Smack Studio", "description": "Steam · Installed", "aliases": ["steam", "smack studio", "ss"], "action": "uwsm-app -- steam steam://rungameid/1739300"},
   "games.steam-2198150": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/2198150/cabab057d40458476ae363e7c6b8281d561cde7f.jpg", "label": "Tiny Glade", "description": "Steam · Installed", "aliases": ["steam", "tiny glade", "tg"], "action": "uwsm-app -- steam steam://rungameid/2198150"},
   "games.steam-1444480": {"icon": "/home/azterisk/.local/share/Steam/appcache/librarycache/1444480/31368bd4540d977bf572fb413a58169f14583550.jpg", "label": "Turing Complete", "description": "Steam · Installed", "aliases": ["steam", "turing complete", "tc"], "action": "uwsm-app -- steam steam://rungameid/1444480"},
@@ -55,4 +57,10 @@
   "games._rescan": {"icon": "", "label": "Rescan Game Libraries", "description": "Refresh Steam, Lutris & RetroArch games", "aliases": ["rescan", "refresh", "sync-games"], "action": "omarchy-games sync && notify-send -i input-gaming 'Omarchy Games' 'Game library rescanned successfully!'"},
   "setup.games": {"icon": "󰊴", "label": "Game Sources", "description": "Configure game libraries and paths", "aliases": ["game-sources", "steam-config", "lutris-config"], "action": "omarchy-games config"},
   // --- END OMARCHY GAMES ---
+,
+  // --- BEGIN OMARCHY BOOT MANAGER ---
+  "setup.boot": {"icon": "󰌿", "label": "Boot & Secure Boot", "description": "Windows dual-boot & Secure Boot configuration", "aliases": ["boot", "secure-boot", "windows-boot", "bios-setup"], "action": "omarchy-boot gui"},
+  "system.reboot-windows": {"icon": "", "label": "Reboot into Windows", "description": "One-shot boot directly into Windows for next boot", "aliases": ["reboot-windows", "windows"], "action": "omarchy-boot reboot windows"},
+  "system.reboot-bios": {"icon": "󰒔", "label": "Reboot into BIOS Setup", "description": "Reboot straight to motherboard UEFI firmware", "aliases": ["reboot-bios", "bios", "uefi"], "action": "omarchy-boot reboot bios"},
+  // --- END OMARCHY BOOT MANAGER ---
 }
